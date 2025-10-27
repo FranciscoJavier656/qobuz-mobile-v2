@@ -174,7 +174,8 @@ const LibraryItemCard: React.FC<{
   onRemove?: (id: string) => void;
   onPlay?: (id: string) => void;
   isPlaying?: boolean;
-}> = React.memo(({ item, index, onRemove, onPlay, isPlaying }) => {
+  onArtistPress?: (artistId: string, artistName: string, artistImage?: string) => void;
+}> = React.memo(({ item, index, onRemove, onPlay, isPlaying, onArtistPress }) => {
   const itemAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -216,6 +217,16 @@ const LibraryItemCard: React.FC<{
     );
   }
 
+  // Manejar el press del item principal
+  const handleItemPress = () => {
+    if (item.type === 'artist' && onArtistPress) {
+      console.log('Item pressed:', item.id);
+      onArtistPress(item.id, item.title, item.image);
+    } else {
+      console.log('Item pressed:', item.id);
+    }
+  };
+
   // Renderizar item normal
   return (
     <Animated.View
@@ -229,7 +240,7 @@ const LibraryItemCard: React.FC<{
     >
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => console.log('Item pressed:', item.id)}
+        onPress={handleItemPress}
       >
         <BlurView intensity={20} tint="dark" style={styles.itemBlur}>
           <LinearGradient
@@ -773,6 +784,15 @@ const LibraryScreen = () => {
     console.log('[LibraryScreen] ❌ Removed from favorites:', trackId);
   }, [dispatch]);
 
+  const handleArtistPress = useCallback((artistId: string, artistName: string, artistImage?: string) => {
+    console.log('[LibraryScreen] Navigating to artist:', artistName);
+    (navigation as any).navigate('ArtistDetail', {
+      artistId,
+      artistName,
+      artistImage,
+    });
+  }, [navigation]);
+
   const renderItem = ({ item, index }: { item: LibraryItem; index: number }) => {
     // Determinar si este track está reproduciéndose
     const isCurrentlyPlaying = currentTrack?.id.toString() === item.id && isPlaying && miniPlayerVisible;
@@ -784,6 +804,7 @@ const LibraryScreen = () => {
         onRemove={activeTab === 'favorites' ? handleRemoveFavorite : undefined}
         onPlay={activeTab === 'favorites' ? handlePlayFavorite : undefined}
         isPlaying={isCurrentlyPlaying}
+        onArtistPress={handleArtistPress}
       />
     );
   };

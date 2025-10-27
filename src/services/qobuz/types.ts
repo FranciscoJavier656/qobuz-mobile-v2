@@ -1,6 +1,7 @@
 export interface Track {
   id: number;
   title: string;
+  track_number?: number;
   performer?: {
     name: string;
     id?: number; // ID del artista para obtener su info completa desde Qobuz
@@ -12,6 +13,7 @@ export interface Track {
       large?: string;
     };
     title?: string;
+    release_date_original?: string;
   };
   duration?: number;
   streamable?: boolean;

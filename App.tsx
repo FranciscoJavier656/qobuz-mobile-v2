@@ -25,6 +25,7 @@ import LibraryScreen from './src/screens/LibraryScreen';
 import DownloadsScreen from './src/screens/DownloadsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import ArtistDetailScreen from './src/screens/ArtistDetailScreen';
 
 // Components
 import MiniPlayerWrapper from './src/components/MiniPlayerWrapper';
@@ -172,7 +173,10 @@ const AppNavigator = () => {
       <StatusBar style="light" backgroundColor="#000" />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
+          </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
