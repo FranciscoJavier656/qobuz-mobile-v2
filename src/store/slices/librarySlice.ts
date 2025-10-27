@@ -252,10 +252,10 @@ const librarySlice = createSlice({
         const artistId = Math.abs(artistIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
         const artistExists = state.artists.find(a => a.name === track.performer?.name);
         
+        // Usar la imagen del álbum como miniatura del artista
+        const artistPicture = track.album?.image?.large || track.album?.image?.small || undefined;
+        
         if (!artistExists) {
-          // Usar la imagen del álbum como miniatura del artista
-          const artistPicture = track.album?.image?.large || track.album?.image?.small || undefined;
-          
           const newArtist: Artist = {
             id: artistId,
             name: track.performer.name,
@@ -266,6 +266,11 @@ const librarySlice = createSlice({
           console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name, 'con imagen:', !!artistPicture);
           console.log('[LibrarySlice] 📊 Total artistas en biblioteca:', state.artists.length);
         } else {
+          // Si el artista existe pero no tiene imagen y ahora sí la tenemos, actualizarla
+          if (!artistExists.picture && artistPicture) {
+            artistExists.picture = artistPicture;
+            console.log('[LibrarySlice] 🖼️ Imagen del artista actualizada:', artistExists.name);
+          }
           console.log('[LibrarySlice] ⚠️ Artist ya existe en biblioteca:', track.performer.name);
         }
       } else {

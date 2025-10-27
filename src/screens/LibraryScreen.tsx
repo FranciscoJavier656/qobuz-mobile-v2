@@ -71,7 +71,7 @@ const convertArtistsToItems = (artistsList: Artist[]): LibraryItem[] => {
     id: artist.id.toString(),
     title: artist.name,
     subtitle: `${artist.albums_count || 0} álbumes`,
-    image: artist.picture || 'https://via.placeholder.com/300',
+    image: artist.picture && artist.picture !== 'undefined' ? artist.picture : 'https://via.placeholder.com/300',
     type: 'artist' as const,
   }));
 };
