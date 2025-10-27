@@ -3,6 +3,7 @@ export interface Track {
   title: string;
   performer?: {
     name: string;
+    id?: number; // ID del artista para obtener su info completa desde Qobuz
   };
   album?: {
     image?: {

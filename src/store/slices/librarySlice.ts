@@ -73,20 +73,19 @@ export const addMetadataFromTrackAsync = createAsyncThunk(
     // Si el track tiene performer con ID, intentar obtener info completa del artista
     const state = getState() as any;
     const authToken = state.auth?.token;
-    const trackAny = track as any; // Necesario porque el tipo Track simplificado no incluye performer.id
     
     console.log('[LibrarySlice] 🔍 Verificando datos del performer:', {
-      hasPerformer: !!trackAny.performer,
-      performerName: trackAny.performer?.name,
-      performerId: trackAny.performer?.id,
+      hasPerformer: !!track.performer,
+      performerName: track.performer?.name,
+      performerId: track.performer?.id,
       hasAuthToken: !!authToken
     });
     
-    if (trackAny.performer?.id && authToken) {
+    if (track.performer?.id && authToken) {
       try {
-        console.log('[LibrarySlice] 🌐 Solicitando info del artista desde Qobuz, ID:', trackAny.performer.id);
+        console.log('[LibrarySlice] 🌐 Solicitando info del artista desde Qobuz, ID:', track.performer.id);
         const artistInfo = await dispatch(fetchArtistInfo({
-          artistId: trackAny.performer.id,
+          artistId: track.performer.id,
           authToken: authToken,
         }));
         
@@ -108,8 +107,9 @@ export const addMetadataFromTrackAsync = createAsyncThunk(
         console.log('[LibrarySlice] 📸 Usando imagen del álbum como fallback');
       }
     } else {
-      if (!trackAny.performer?.id) {
+      if (!track.performer?.id) {
         console.log('[LibrarySlice] ⚠️ Track no tiene performer.id, no se puede obtener imagen de Qobuz');
+        console.log('[LibrarySlice] 📋 Performer data:', track.performer);
       }
       if (!authToken) {
         console.log('[LibrarySlice] ⚠️ No hay authToken, no se puede obtener imagen de Qobuz');
@@ -177,11 +177,10 @@ export const processExistingDownloads = createAsyncThunk(
         dispatch(librarySlice.actions.addMetadataFromTrack(download.track));
         
         // Si el track tiene performer con ID y tenemos auth token, obtener info completa del artista
-        const trackAny = download.track as any; // Necesario porque el tipo simplificado no incluye performer.id
-        if (trackAny.performer?.id && authToken) {
-          console.log('[LibrarySlice] 🌐 Solicitando info del artista para reproceso, ID:', trackAny.performer.id);
+        if (download.track.performer?.id && authToken) {
+          console.log('[LibrarySlice] 🌐 Solicitando info del artista para reproceso, ID:', download.track.performer.id);
           const artistInfo = await dispatch(fetchArtistInfo({
-            artistId: trackAny.performer.id,
+            artistId: download.track.performer.id,
             authToken: authToken,
           }));
           
