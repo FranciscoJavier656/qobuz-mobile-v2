@@ -79,6 +79,38 @@ export const addMetadataFromTrackAsync = createAsyncThunk(
   }
 );
 
+// Thunk para reprocesar descargas existentes
+export const processExistingDownloads = createAsyncThunk(
+  'library/processExistingDownloads',
+  async (_, { dispatch, getState }) => {
+    console.log('[LibrarySlice] 🔄 Reprocesando descargas existentes...');
+    const state = getState() as any;
+    const downloads = state.download?.downloads ?? [];
+    
+    // Filtrar solo descargas completadas
+    const completedDownloads = downloads.filter((d: any) => d.status === 'completed');
+    console.log('[LibrarySlice] 📥 Descargas completadas encontradas:', completedDownloads.length);
+    
+    // Procesar cada track
+    for (const download of completedDownloads) {
+      if (download.track) {
+        console.log('[LibrarySlice] ⚙️ Procesando track:', download.track.title);
+        dispatch(librarySlice.actions.addMetadataFromTrack(download.track));
+      }
+    }
+    
+    // Guardar en AsyncStorage
+    const updatedState = getState() as any;
+    await dispatch(saveLibrary({
+      albums: updatedState.library.albums,
+      artists: updatedState.library.artists,
+    }));
+    
+    console.log('[LibrarySlice] ✅ Reprocesamiento completado');
+    console.log('[LibrarySlice] 📊 Total: Albums:', updatedState.library.albums.length, 'Artists:', updatedState.library.artists.length);
+  }
+);
+
 const librarySlice = createSlice({
   name: 'library',
   initialState,

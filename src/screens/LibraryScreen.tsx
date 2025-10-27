@@ -22,7 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import type { RootState, AppDispatch } from '../store';
 import { removeFromFavorites, correctFavoriteSource } from '../store/slices/favoritesSlice';
-import { loadLibrary } from '../store/slices/librarySlice';
+import { loadLibrary, processExistingDownloads } from '../store/slices/librarySlice';
 import type { Track, Album, Artist } from '../services/qobuz/types';
 import { usePlayerContext } from '../contexts/PlayerContext';
 import { QobuzAPI } from '../services/qobuz/QobuzAPI';
@@ -430,8 +430,20 @@ const LibraryScreen = () => {
   // Cargar biblioteca desde AsyncStorage al iniciar
   useEffect(() => {
     console.log('[LibraryScreen] Cargando biblioteca desde AsyncStorage...');
-    dispatch(loadLibrary());
+    dispatch(loadLibrary()).then(() => {
+      // Después de cargar, reprocesar descargas existentes
+      console.log('[LibraryScreen] Reprocesando descargas existentes...');
+      dispatch(processExistingDownloads());
+    });
   }, [dispatch]);
+
+  // Debug: Log de albums y artists cuando cambien
+  useEffect(() => {
+    console.log('[LibraryScreen] 📊 Estado actual de biblioteca:');
+    console.log('[LibraryScreen] 📀 Albums:', albumItems.length, albumItems);
+    console.log('[LibraryScreen] 🎤 Artists:', artistItems.length, artistItems);
+    console.log('[LibraryScreen] 📥 Downloads:', downloadItems.length);
+  }, [albumItems, artistItems, downloadItems]);
 
   useEffect(() => {
     // Animación de entrada
