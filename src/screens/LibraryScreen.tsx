@@ -20,8 +20,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { createSelector } from '@reduxjs/toolkit';
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
-import type { RootState } from '../store';
+import type { RootState, AppDispatch } from '../store';
 import { removeFromFavorites, correctFavoriteSource } from '../store/slices/favoritesSlice';
+import { loadLibrary } from '../store/slices/librarySlice';
 import type { Track, Album, Artist } from '../services/qobuz/types';
 import { usePlayerContext } from '../contexts/PlayerContext';
 import { QobuzAPI } from '../services/qobuz/QobuzAPI';
@@ -325,7 +326,7 @@ const LibraryItemCard: React.FC<{
 });
 
 const LibraryScreen = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<LibraryTab>('favorites');
   const [favoriteFilter, setFavoriteFilter] = useState<'local' | 'streaming'>('local');
@@ -425,6 +426,12 @@ const LibraryScreen = () => {
       qobuzAPI.setAuthToken(authToken);
     }
   }, [authToken]);
+
+  // Cargar biblioteca desde AsyncStorage al iniciar
+  useEffect(() => {
+    console.log('[LibraryScreen] Cargando biblioteca desde AsyncStorage...');
+    dispatch(loadLibrary());
+  }, [dispatch]);
 
   useEffect(() => {
     // Animación de entrada

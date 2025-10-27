@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Track, Album, Artist } from '../../services/qobuz/types';
 
 interface Playlist {
@@ -24,6 +25,59 @@ const initialState: LibraryState = {
   playlists: [],
   recentlyPlayed: [],
 };
+
+// Thunk para cargar la biblioteca desde AsyncStorage
+export const loadLibrary = createAsyncThunk(
+  'library/loadLibrary',
+  async () => {
+    try {
+      const [albumsJson, artistsJson] = await Promise.all([
+        AsyncStorage.getItem('@qobuz_library_albums'),
+        AsyncStorage.getItem('@qobuz_library_artists'),
+      ]);
+      
+      return {
+        albums: albumsJson ? JSON.parse(albumsJson) : [],
+        artists: artistsJson ? JSON.parse(artistsJson) : [],
+      };
+    } catch (error) {
+      console.error('[LibrarySlice] Error loading library:', error);
+      return { albums: [], artists: [] };
+    }
+  }
+);
+
+// Thunk para guardar la biblioteca en AsyncStorage
+export const saveLibrary = createAsyncThunk(
+  'library/saveLibrary',
+  async (state: { albums: Album[]; artists: Artist[] }) => {
+    try {
+      await Promise.all([
+        AsyncStorage.setItem('@qobuz_library_albums', JSON.stringify(state.albums)),
+        AsyncStorage.setItem('@qobuz_library_artists', JSON.stringify(state.artists)),
+      ]);
+      console.log('[LibrarySlice] ✅ Biblioteca guardada en AsyncStorage');
+    } catch (error) {
+      console.error('[LibrarySlice] Error saving library:', error);
+    }
+  }
+);
+
+// Thunk para agregar metadatos y persistir
+export const addMetadataFromTrackAsync = createAsyncThunk(
+  'library/addMetadataFromTrackAsync',
+  async (track: Track, { dispatch, getState }) => {
+    // Primero agregar a la store
+    dispatch(librarySlice.actions.addMetadataFromTrack(track));
+    
+    // Luego persistir
+    const state = getState() as any;
+    await dispatch(saveLibrary({
+      albums: state.library.albums,
+      artists: state.library.artists,
+    }));
+  }
+);
 
 const librarySlice = createSlice({
   name: 'library',
@@ -130,9 +184,12 @@ const librarySlice = createSlice({
     // Agregar metadatos desde track descargado
     addMetadataFromTrack: (state, action: PayloadAction<Track>) => {
       const track = action.payload;
+      console.log('[LibrarySlice] 🔍 Procesando track:', track.title);
+      console.log('[LibrarySlice] 🔍 Track completo:', JSON.stringify(track, null, 2));
       
       // Agregar álbum si existe y tiene título
       if (track.album?.title) {
+        console.log('[LibrarySlice] 📀 Procesando álbum:', track.album.title);
         // Generar ID numérico basado en hash del título del álbum
         const albumIdStr = `${track.album.title}-${track.performer?.name || 'unknown'}`;
         const albumId = Math.abs(albumIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
@@ -149,11 +206,15 @@ const librarySlice = createSlice({
           };
           state.albums.unshift(newAlbum);
           console.log('[LibrarySlice] ✅ Album agregado a biblioteca:', newAlbum.title);
+          console.log('[LibrarySlice] 📊 Total álbumes en biblioteca:', state.albums.length);
+        } else {
+          console.log('[LibrarySlice] ⚠️ Album ya existe en biblioteca:', track.album.title);
         }
       }
       
       // Agregar artista (performer) si existe
       if (track.performer?.name) {
+        console.log('[LibrarySlice] 🎤 Procesando artista:', track.performer.name);
         // Generar ID numérico basado en hash del nombre del artista
         const artistIdStr = track.performer.name;
         const artistId = Math.abs(artistIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
@@ -168,9 +229,25 @@ const librarySlice = createSlice({
           };
           state.artists.unshift(newArtist);
           console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name);
+          console.log('[LibrarySlice] 📊 Total artistas en biblioteca:', state.artists.length);
+        } else {
+          console.log('[LibrarySlice] ⚠️ Artist ya existe en biblioteca:', track.performer.name);
         }
+      } else {
+        console.log('[LibrarySlice] ⚠️ Track no tiene performer');
       }
+      
+      console.log('[LibrarySlice] ✨ Proceso completado. Albums:', state.albums.length, 'Artists:', state.artists.length);
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadLibrary.fulfilled, (state, action) => {
+        state.albums = action.payload.albums;
+        state.artists = action.payload.artists;
+        console.log('[LibrarySlice] ✅ Biblioteca cargada desde AsyncStorage');
+        console.log('[LibrarySlice] 📊 Albums:', state.albums.length, 'Artists:', state.artists.length);
+      });
   },
 });
 
