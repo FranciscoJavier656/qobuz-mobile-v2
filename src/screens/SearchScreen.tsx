@@ -20,6 +20,9 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '@expo/vector-icons/MaterialIcons';
 
+// Store
+import store from '../store';
+
 // Context
 import { usePlayerContext } from '../contexts/PlayerContext';
 
@@ -27,7 +30,6 @@ import { RootState } from '../store';
 import { addDownload } from '../slices/downloadSlice';
 import { QobuzAPI } from '../services/qobuz/QobuzAPI';
 import type { Track } from '../services/qobuz/types';
-import FullPlayer from '../components/AudioPlayer/FullPlayer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_MARGIN = 12;
@@ -77,44 +79,47 @@ const TrackItem: React.FC<TrackItemProps> = React.memo(({
 
   useEffect(() => {
     if (isPlaying) {
-      // Animación de glow pulsante cuando se reproduce
+      // SOLO ANIMAR LA TARJETA QUE SE ESTÁ REPRODUCIENDO
+      // Animación de glow pulsante - MÁS LENTA para mejor rendimiento
       Animated.loop(
         Animated.sequence([
           Animated.timing(glowAnim, {
             toValue: 1,
-            duration: 1000,
+            duration: 2000, // Aumentado de 1000ms a 2000ms
             useNativeDriver: true,
           }),
           Animated.timing(glowAnim, {
             toValue: 0,
-            duration: 1000,
+            duration: 2000,
             useNativeDriver: true,
           }),
         ])
       ).start();
       
-      // Animación de las barras del waveform con delays diferentes
+      // Animación SIMPLIFICADA de las barras - solo 2 barras en lugar de 4
       const animateBar = (bar: Animated.Value, delay: number) => {
         Animated.loop(
           Animated.sequence([
             Animated.timing(bar, {
-              toValue: 0.3,
-              duration: 300 + delay,
+              toValue: 0.4, // Menos extremo: 0.4 en lugar de 0.3
+              duration: 500 + delay, // Más lento: 500 en lugar de 300
               useNativeDriver: true,
             }),
             Animated.timing(bar, {
               toValue: 1,
-              duration: 300 + delay,
+              duration: 500 + delay,
               useNativeDriver: true,
             }),
           ])
         ).start();
       };
 
+      // SOLO animar 2 barras en lugar de 4 para reducir carga
       animateBar(waveBar1, 0);
-      animateBar(waveBar2, 100);
-      animateBar(waveBar3, 50);
-      animateBar(waveBar4, 150);
+      animateBar(waveBar3, 100);
+      // Mantener barras 2 y 4 estáticas
+      waveBar2.setValue(0.7);
+      waveBar4.setValue(0.9);
     } else {
       glowAnim.setValue(0);
       waveBar1.setValue(1);
@@ -327,57 +332,90 @@ const TrackItem: React.FC<TrackItemProps> = React.memo(({
 
 const SearchScreen = () => {
   const dispatch = useDispatch();
-  const { fullPlayerVisible, setFullPlayerVisible } = usePlayerContext();
+  const playerContext = usePlayerContext();
   const authState = useSelector((state: RootState) => state.auth);
+  const downloadSettings = useSelector((state: RootState) => state.download.settings);
   const isAuthenticated = authState?.isAuthenticated || false;
   const authToken = authState?.token || null;
   
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Track[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  
+  // Usar el PlayerContext para el estado compartido
+  const sound = playerContext.sound;
+  const setSound = playerContext.setSound;
+  const currentTrack = playerContext.currentTrack;
+  const setCurrentTrack = playerContext.setCurrentTrack;
+  const isPlaying = playerContext.isPlaying;
+  const setIsPlaying = playerContext.setIsPlaying;
+  const miniPlayerVisible = playerContext.miniPlayerVisible;
+  const setMiniPlayerVisible = playerContext.setMiniPlayerVisible;
+  const fullPlayerVisible = playerContext.fullPlayerVisible;
+  const setFullPlayerVisible = playerContext.setFullPlayerVisible;
+  
   const [playingTrackId, setPlayingTrackId] = useState<number | null>(null);
-  const [miniPlayerVisible, setMiniPlayerVisible] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isFullTrack, setIsFullTrack] = useState(false);
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const searchBarScale = useRef(new Animated.Value(1)).current;
-  const miniPlayerAnim = useRef(new Animated.Value(0)).current;
+  const toastAnim = useRef(new Animated.Value(0)).current;
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const miniProgressBarWidth = useRef(0);
+  const lastPositionUpdate = useRef(0);
+  const animationFrameId = useRef<number | null>(null);
   
-  // Actualizar progreso de reproducción
+  // Monitorear cambios en downloadSettings
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    console.log('[SearchScreen] 📊 downloadSettings changed:', downloadSettings);
+    console.log('[SearchScreen] 🎯 Current defaultQuality:', downloadSettings.defaultQuality);
+  }, [downloadSettings]);
+  
+  // Actualizar progreso de reproducción usando el callback nativo
+  useEffect(() => {
+    if (!sound) return;
 
-    const updateProgress = async () => {
-      if (sound) {
-        try {
-          const status = await sound.getStatusAsync();
-          if (status.isLoaded) {
-            setPosition(status.positionMillis || 0);
-            setDuration(status.durationMillis || 0);
-          }
-        } catch (error) {
-          console.log('[SearchScreen] Error updating progress:', error);
+    const onPlaybackStatusUpdate = (status: any) => {
+      if (status.isLoaded && !isSeeking) {
+        const currentPosition = status.positionMillis || 0;
+        const currentDuration = status.durationMillis || 0;
+        
+        // Throttle: solo actualizar estado cada 1000ms para reducir re-renders
+        const now = Date.now();
+        if (now - lastPositionUpdate.current < 1000) {
+          return;
         }
+        
+        lastPositionUpdate.current = now;
+        
+        // Usar requestAnimationFrame para suavizar las actualizaciones
+        if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+        }
+        
+        animationFrameId.current = requestAnimationFrame(() => {
+          setPosition(currentPosition);
+          setDuration(currentDuration);
+        });
       }
     };
 
-    if (isPlaying && sound) {
-      interval = setInterval(updateProgress, 500);
-    }
+    // Establecer el callback nativo en lugar de setInterval
+    sound.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
 
     return () => {
-      if (interval) clearInterval(interval);
+      sound.setOnPlaybackStatusUpdate(null);
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
     };
-  }, [isPlaying, sound]);
+  }, [sound, isSeeking]);
 
   // Establecer token de autenticación
   useEffect(() => {
@@ -510,15 +548,39 @@ const SearchScreen = () => {
     }
   };
 
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    
+    Animated.sequence([
+      Animated.spring(toastAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2000),
+      Animated.timing(toastAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setToastVisible(false);
+    });
+  };
+
   const handleDownload = (track: Track) => {
+    // Leer la calidad DIRECTAMENTE del store en el momento de la descarga
+    const currentQuality = store.getState().download.settings.defaultQuality;
+    console.log('[SearchScreen] 🎵 Adding download with quality:', currentQuality);
+    console.log('[SearchScreen] 📊 Store state check:', store.getState().download.settings);
+    
     dispatch(addDownload({
-      id: track.id.toString(),
-      title: track.title,
-      artist: track.performer?.name || 'Unknown',
-      progress: 0,
-      status: 'pending' as const,
+      track,
+      quality: currentQuality, // Usar calidad actual del store
     }));
-    Alert.alert('Añadido', `${track.title} añadido a descargas`);
+    showToast(`✓ ${track.title} añadido a descargas`);
   };
 
   // Función para reproducir track COMPLETO (sin límite de 30 segundos)
@@ -555,7 +617,7 @@ const SearchScreen = () => {
       
       try {
         console.log('[SearchScreen] Getting full track URL with signature...');
-        fullTrackUrl = await qobuzAPI.getTrackFileUrl(track.id, 'stream');
+        fullTrackUrl = await qobuzAPI.getTrackFileUrl(track.id, 27, 'stream');
         console.log('[SearchScreen] Full track URL obtained');
       } catch (error) {
         console.error('[SearchScreen] Error getting full track URL:', error);
@@ -602,13 +664,16 @@ const SearchScreen = () => {
       if (status.isLoaded) {
         if (status.isPlaying) {
           // Pausar
+          console.log('[SearchScreen] Pausing track');
           await sound.pauseAsync();
           setIsPlaying(false);
         } else {
           // Reanudar
+          console.log('[SearchScreen] Resuming track');
           await sound.playAsync();
           setIsPlaying(true);
         }
+        console.log('[SearchScreen] isPlaying updated to:', !status.isPlaying);
       }
     } catch (error) {
       console.error('Error toggling play/pause:', error);
@@ -622,29 +687,24 @@ const SearchScreen = () => {
       miniPlayerVisible, 
       currentTrack: currentTrack?.id, 
       isFullTrack,
-      fullPlayerVisible
+      fullPlayerVisible,
+      soundExists: !!sound
     });
     
-    // Si es el mismo track que ya está sonando en el mini player, solo mostrar el mini player
-    if (currentTrack?.id === track.id && isFullTrack) {
-      console.log('[SearchScreen] Mismo track, solo mostrar mini player');
+    // Si es el mismo track que ya está sonando en el mini player Y el sonido existe, solo mostrar el mini player
+    if (currentTrack?.id === track.id && isFullTrack && sound) {
+      console.log('[SearchScreen] Mismo track con sonido existente, solo mostrar mini player');
       setMiniPlayerVisible(true);
-      miniPlayerAnim.setValue(1); // Mostrar inmediatamente para debug
       return;
     }
 
     // Establecer el track actual y estados PRIMERO
-    console.log('[SearchScreen] Nuevo track, estableciendo estados...');
+    console.log('[SearchScreen] Nuevo track o sonido inexistente, reiniciando reproducción...');
     setCurrentTrack(track);
     setMiniPlayerVisible(true);
     setFullPlayerVisible(false); // Asegurar que full player está cerrado
     
-    console.log('[SearchScreen] Estados establecidos, valor animación:', miniPlayerAnim);
-    
-    // Resetear animación y animar entrada - USAR setValue(1) temporalmente para debug
-    miniPlayerAnim.setValue(1); // Temporalmente sin animación para ver si aparece
-    
-    console.log('[SearchScreen] Animación establecida a 1');
+    console.log('[SearchScreen] Estados establecidos');
 
     // Reproducir track completo
     console.log('[SearchScreen] Iniciando reproducción...');
@@ -676,18 +736,12 @@ const SearchScreen = () => {
       setSound(null);
     }
 
-    // Animar salida del mini player
-    Animated.timing(miniPlayerAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setMiniPlayerVisible(false);
-      setCurrentTrack(null);
-      setPlayingTrackId(null);
-      setIsPlaying(false);
-      setIsFullTrack(false);
-    });
+    // Ocultar mini player y limpiar estado
+    setMiniPlayerVisible(false);
+    setCurrentTrack(null);
+    setPlayingTrackId(null);
+    setIsPlaying(false);
+    setIsFullTrack(false);
   };
 
   // Manejar seek en la barra de progreso del mini player
@@ -745,22 +799,12 @@ const SearchScreen = () => {
 
   // Cerrar reproductor completo (volver al mini player)
   const handleCloseFullPlayer = () => {
-    setFullPlayerVisible(false);
     // Mostrar el mini player de nuevo si hay una canción reproduciéndose
     if (currentTrack && isFullTrack) {
-      // Resetear la animación y mostrar el mini player
-      miniPlayerAnim.setValue(0);
       setMiniPlayerVisible(true);
-      
-      // Animar entrada
-      setTimeout(() => {
-        Animated.spring(miniPlayerAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }).start();
-      }, 100);
+      setFullPlayerVisible(false);
+    } else {
+      setFullPlayerVisible(false);
     }
   };
 
@@ -771,9 +815,9 @@ const SearchScreen = () => {
     await handleCloseMiniPlayer();
   };
 
-  const renderTrackItem = ({ item, index }: { item: Track; index: number }) => {
+  const renderTrackItem = useCallback(({ item, index }: { item: Track; index: number }) => {
     // La tarjeta está "playing" solo si es el track actual Y el audio está realmente reproduciéndose
-    const isTrackPlaying = playingTrackId === item.id && isPlaying;
+    const isTrackPlaying = currentTrack?.id === item.id && isPlaying;
     return (
       <TrackItem
         item={item}
@@ -784,7 +828,7 @@ const SearchScreen = () => {
         onOpenPlayer={() => handleOpenMiniPlayer(item)}
       />
     );
-  };
+  }, [currentTrack, isPlaying, handlePlay, handleDownload, handleOpenMiniPlayer]); // Agregar funciones a las dependencias
 
   const renderEmptyState = () => {
     if (loading) {
@@ -889,295 +933,50 @@ const SearchScreen = () => {
             columnWrapperStyle={styles.gridRow}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={renderEmptyState}
+            // OPTIMIZACIONES CRÍTICAS DE RENDIMIENTO
+            removeClippedSubviews={true} // Desmontar items fuera de la pantalla
+            maxToRenderPerBatch={6} // Renderizar máximo 6 items por lote (3 filas)
+            updateCellsBatchingPeriod={50} // Actualizar cada 50ms en lugar de cada frame
+            initialNumToRender={8} // Renderizar solo 8 items inicialmente (4 filas)
+            windowSize={5} // Mantener solo 5 pantallas de items en memoria
+            getItemLayout={(data, index) => ({
+              length: CARD_WIDTH + 180,
+              offset: (CARD_WIDTH + 180) * Math.floor(index / NUM_COLUMNS),
+              index,
+            })}
           />
         </Animated.View>
       </SafeAreaView>
 
-      {/* Mini Player Flotante */}
-      {miniPlayerVisible && currentTrack && !fullPlayerVisible && (
-        <Animated.View
-          style={[
-            styles.miniPlayer,
-            {
-              transform: [
-                {
-                  translateY: miniPlayerAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [200, 0],
-                  }),
-                },
-              ],
-              opacity: miniPlayerAnim,
-            },
-          ]}
-        >
-          <BlurView intensity={100} tint="dark" style={styles.miniPlayerBlur}>
-            <TouchableOpacity 
-              activeOpacity={0.9}
-              onPress={handleOpenFullPlayer}
-              style={{ flex: 1 }}
-            >
-              <LinearGradient
-                colors={['rgba(29, 185, 84, 0.3)', 'rgba(0, 0, 0, 0.95)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.miniPlayerGradient}
-              >
-                {/* Album Cover */}
-              <Image
-                source={{
-                  uri: currentTrack.album?.image?.large || currentTrack.album?.image?.small || 'https://via.placeholder.com/80',
-                }}
-                style={styles.miniPlayerAlbum}
-              />
-
-              {/* Track Info */}
-              <View style={styles.miniPlayerInfo}>
-                <Text style={styles.miniPlayerTitle} numberOfLines={1}>
-                  {currentTrack.title}
-                </Text>
-                <Text style={styles.miniPlayerArtist} numberOfLines={1}>
-                  {currentTrack.performer?.name || 'Unknown Artist'}
-                </Text>
-              </View>
-
-              {/* Controls */}
-              <View style={styles.miniPlayerControls}>
-                <TouchableOpacity
-                  style={styles.miniPlayerButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleMiniPlayerPlayPause();
-                  }}
-                >
-                  <Icon
-                    name={isPlaying ? 'pause' : 'play-arrow'}
-                    size={20}
-                    color="#fff"
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.miniPlayerButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleCloseMiniPlayer();
-                  }}
-                >
-                  <Icon name="close" size={18} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-          </BlurView>
-        </Animated.View>
-      )}
-
-      {/* Full Player */}
-      {fullPlayerVisible && currentTrack && (
-        <FullPlayer
-          track={currentTrack}
-          isPlaying={isPlaying}
-          sound={sound}
-          onClose={handleCloseFullPlayer}
-          onPlayPause={handleMiniPlayerPlayPause}
-          queue={playQueue}
-          onQueueUpdate={setPlayQueue}
-          onTrackSelect={async (track) => {
-            setCurrentTrack(track);
-            await playFullTrack(track);
-          }}
-        />
-      )}
+      {/* Mini Player y Full Player ahora se manejan globalmente en App.tsx */}
     </View>
 
-    {/* Mini Player FUERA del container - A nivel de pantalla completa */}
-    {miniPlayerVisible && currentTrack && !fullPlayerVisible && (
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: 'rgba(20, 20, 20, 0.98)',
-          zIndex: 999999,
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(29, 185, 84, 0.5)',
-        }}
+    {/* Toast de descarga */}
+    {toastVisible && (
+      <Animated.View
+        style={[
+          styles.toastContainer,
+          {
+            opacity: toastAnim,
+            transform: [{
+              translateY: toastAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            }],
+          },
+        ]}
       >
-        {/* Progress Bar */}
-        <Slider
-          style={{
-            width: '100%',
-            height: 20,
-            marginTop: -5,
-          }}
-          value={position}
-          minimumValue={0}
-          maximumValue={duration || 1}
-          minimumTrackTintColor="#1DB954"
-          maximumTrackTintColor="rgba(255,255,255,0.12)"
-          thumbTintColor="transparent"
-          onSlidingStart={() => setIsSeeking(true)}
-          onSlidingComplete={(value) => {
-            handleSeek(value / duration);
-            setIsSeeking(false);
-          }}
-          onValueChange={(value) => {
-            if (isSeeking) {
-              setPosition(value);
-            }
-          }}
-        />
-
-        {/* Content */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleOpenFullPlayer}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-          }}
-        >
-          {/* Album Art */}
-          <Image
-            source={{ uri: currentTrack.album?.image?.thumbnail || currentTrack.album?.image?.small }}
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 6,
-              marginRight: 12,
-              backgroundColor: '#1a1a1a',
-            }}
-          />
-
-          {/* Track Info */}
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text
-              style={{
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: '600',
-                marginBottom: 4,
-              }}
-              numberOfLines={1}
-            >
-              {currentTrack.title}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text
-                style={{
-                  color: 'rgba(255,255,255,0.6)',
-                  fontSize: 12,
-                }}
-                numberOfLines={1}
-              >
-                {currentTrack.performer?.name || 'Artista Desconocido'}
-              </Text>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
-                {formatTime(position)} / {formatTime(duration)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Controls */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity 
-              onPress={handleRewind}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                overflow: 'hidden',
-              }}
-              activeOpacity={0.7}
-            >
-              <BlurView intensity={30} tint="dark" style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              }}>
-                <Icon
-                  name="replay-10"
-                  size={20}
-                  color="rgba(255,255,255,0.8)"
-                />
-              </BlurView>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={handleMiniPlayerPlayPause}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                overflow: 'hidden',
-              }}
-              activeOpacity={0.8}
-            >
-              <BlurView intensity={35} tint="dark" style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(29, 185, 84, 0.15)',
-              }}>
-                <Icon
-                  name={isPlaying ? 'pause' : 'play-arrow'}
-                  size={24}
-                  color="#1DB954"
-                />
-              </BlurView>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              onPress={handleForward}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                overflow: 'hidden',
-              }}
-              activeOpacity={0.7}
-            >
-              <BlurView intensity={30} tint="dark" style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              }}>
-                <Icon
-                  name="forward-10"
-                  size={20}
-                  color="rgba(255,255,255,0.8)"
-                />
-              </BlurView>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={handleCloseMiniPlayer}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                overflow: 'hidden',
-              }}
-              activeOpacity={0.7}
-            >
-              <BlurView intensity={25} tint="dark" style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              }}>
-                <Icon name="close" size={20} color="rgba(255,255,255,0.6)" />
-              </BlurView>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </View>
+        <BlurView intensity={80} tint="dark" style={styles.toastBlur}>
+          <LinearGradient
+            colors={['rgba(29, 185, 84, 0.9)', 'rgba(29, 185, 84, 0.7)']}
+            style={styles.toastGradient}
+          >
+            <Icon name="download" size={20} color="#fff" />
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </LinearGradient>
+        </BlurView>
+      </Animated.View>
     )}
     </>
   );
@@ -1533,6 +1332,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+  },
+  toastBlur: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  toastGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  toastText: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   StyleSheet,
   Switch,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -14,10 +16,20 @@ import Icon from '@expo/vector-icons/MaterialIcons';
 // Store
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
+import { updateSettings } from '../store/slices/downloadSlice';
+
+const QUALITY_OPTIONS = [
+  { id: '5', label: 'MP3 320kbps', subtitle: 'Alta calidad, menor tamaño' },
+  { id: '6', label: 'FLAC CD (16-bit/44.1kHz)', subtitle: 'Calidad CD sin pérdida' },
+  { id: '7', label: 'FLAC Hi-Res (24-bit/96kHz)', subtitle: 'Alta resolución' },
+  { id: '27', label: 'FLAC Studio (24-bit/192kHz)', subtitle: 'Máxima calidad disponible' },
+];
 
 const SettingsScreen = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { settings } = useSelector((state: RootState) => state.download);
+  const [showQualityModal, setShowQualityModal] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -32,6 +44,18 @@ const SettingsScreen = () => {
         },
       ]
     );
+  };
+
+  const handleQualityChange = (qualityId: string) => {
+    console.log('[SettingsScreen] 🎯 Changing quality to:', qualityId);
+    dispatch(updateSettings({ defaultQuality: qualityId }));
+    setShowQualityModal(false);
+    console.log('[SettingsScreen] ✅ Quality updated in Redux');
+  };
+
+  const getQualityLabel = () => {
+    const quality = QUALITY_OPTIONS.find(q => q.id === settings.defaultQuality);
+    return quality?.label || 'FLAC Studio (24-bit/192kHz)';
   };
 
   const SettingItem = ({ 
@@ -91,8 +115,8 @@ const SettingsScreen = () => {
         <SettingItem
           icon="headset"
           title="Calidad de Audio"
-          subtitle="Alta (320kbps)"
-          onPress={() => {}}
+          subtitle={getQualityLabel()}
+          onPress={() => setShowQualityModal(true)}
         />
         
         <SettingItem
@@ -173,6 +197,52 @@ const SettingsScreen = () => {
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modal de Selección de Calidad */}
+      <Modal
+        visible={showQualityModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowQualityModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Calidad de Audio</Text>
+              <TouchableOpacity onPress={() => setShowQualityModal(false)}>
+                <Icon name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={QUALITY_OPTIONS}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.qualityOption,
+                    settings.defaultQuality === item.id && styles.qualityOptionSelected
+                  ]}
+                  onPress={() => handleQualityChange(item.id)}
+                >
+                  <View style={styles.qualityInfo}>
+                    <Text style={[
+                      styles.qualityLabel,
+                      settings.defaultQuality === item.id && styles.qualityLabelSelected
+                    ]}>
+                      {item.label}
+                    </Text>
+                    <Text style={styles.qualitySubtitle}>{item.subtitle}</Text>
+                  </View>
+                  {settings.defaultQuality === item.id && (
+                    <Icon name="check" size={24} color="#1DB954" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -269,6 +339,59 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 15,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#121212',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  qualityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  qualityOptionSelected: {
+    backgroundColor: 'rgba(29, 185, 84, 0.1)',
+  },
+  qualityInfo: {
+    flex: 1,
+  },
+  qualityLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  qualityLabelSelected: {
+    color: '#1DB954',
+  },
+  qualitySubtitle: {
+    color: '#666',
+    fontSize: 14,
   },
 });
 

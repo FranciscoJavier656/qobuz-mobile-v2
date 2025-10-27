@@ -4,12 +4,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import authSlice from './slices/authSlice';
 import downloadSlice from './slices/downloadSlice';
 import playerSlice from './slices/playerSlice';
+import librarySlice from './slices/librarySlice';
 
 export const store = configureStore({
   reducer: {
     auth: authSlice,
     download: downloadSlice,
     player: playerSlice,
+    library: librarySlice,
   },
 });
 

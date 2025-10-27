@@ -11,13 +11,18 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  Easing,
+  InteractionManager,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { Audio } from 'expo-av';
+import { useSelector, useDispatch } from 'react-redux';
 import type { Track } from '../../services/qobuz/types';
+import type { RootState } from '../../store/store';
+import { addToFavorites, removeFromFavorites } from '../../store/slices/favoritesSlice';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const QUEUE_PANEL_HEIGHT = SCREEN_HEIGHT * 0.6;
@@ -33,6 +38,8 @@ interface FullPlayerProps {
   queue?: Track[];
   onQueueUpdate?: (queue: Track[]) => void;
   onTrackSelect?: (track: Track) => void;
+  visible?: boolean; // Nueva prop para controlar visibilidad
+  isLocalFile?: boolean; // Para saber si es archivo local o streaming
 }
 
 const FullPlayer: React.FC<FullPlayerProps> = ({
@@ -46,13 +53,25 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   queue = [],
   onQueueUpdate,
   onTrackSelect,
+  visible = true,
+  isLocalFile = false,
 }) => {
+  const dispatch = useDispatch();
+  const favoriteTracks = useSelector((state: RootState) => state.favorites.tracks);
+  
+  // Verificar si el track actual está en favoritos
+  const isFavorite = favoriteTracks.some(fav => fav.id === track.id);
+  
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSeeking, setIsSeeking] = useState(false);
+
+  // Usar refs para valores que cambian frecuentemente y no necesitan re-render
+  const lastPositionUpdate = useRef(0);
+  const animationFrameId = useRef<number | null>(null);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const albumArtScale = useRef(new Animated.Value(1)).current;
@@ -61,23 +80,46 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const queueSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const progressBarWidth = useRef(0);
+  
+  // Referencias para controlar animaciones de loop
+  const albumArtAnimation = useRef<Animated.CompositeAnimation | null>(null);
+  const glowAnimation = useRef<Animated.CompositeAnimation | null>(null);
+  
+  // Flag para pausar actualizaciones durante animaciones
+  const isAnimating = useRef(false);
 
-  // Animar entrada al montar
+  // Animar entrada/salida cuando cambia la visibilidad
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        friction: 10,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    if (visible) {
+      // Animar entrada
+      isAnimating.current = false;
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 10,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // DETENER TODAS LAS ANIMACIONES DE LOOP INMEDIATAMENTE
+      isAnimating.current = true;
+      albumArtAnimation.current?.stop();
+      glowAnimation.current?.stop();
+      albumArtScale.setValue(1);
+      glowAnim.setValue(0);
+      
+      // Resetear a posición inicial cuando no es visible
+      slideAnim.setValue(SCREEN_HEIGHT);
+      opacityAnim.setValue(0);
+      translateY.setValue(0);
+    }
+  }, [visible]);
 
   // Pan responder para swipe down para cerrar
   const translateY = useRef(new Animated.Value(0)).current;
@@ -101,27 +143,42 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         translateY.flattenOffset();
         
         if (gestureState.dy > 150 || gestureState.vy > 0.5) {
-          // Si desliza más de 150px o con velocidad rápida, cerrar
+          // Marcar que estamos animando
+          isAnimating.current = true;
+          
+          // Detener animaciones de loop
+          albumArtAnimation.current?.stop();
+          glowAnimation.current?.stop();
+          
+          // Llamar onClose primero
+          onClose();
+          
+          // Si desliza más de 150px o con velocidad rápida, cerrar con animación
           Animated.parallel([
-            Animated.timing(translateY, {
+            Animated.spring(translateY, {
               toValue: SCREEN_HEIGHT,
-              duration: 300,
+              friction: 10,
+              tension: 65,
               useNativeDriver: true,
             }),
             Animated.timing(opacityAnim, {
               toValue: 0,
-              duration: 250,
+              duration: 200,
+              easing: Easing.out(Easing.ease),
               useNativeDriver: true,
             }),
           ]).start(() => {
-            onClose();
+            // Reactivar actualizaciones después de la animación
+            InteractionManager.runAfterInteractions(() => {
+              isAnimating.current = false;
+            });
           });
         } else {
           // Si no, regresar a posición original
           Animated.spring(translateY, {
             toValue: 0,
-            friction: 8,
-            tension: 40,
+            friction: 9,
+            tension: 50,
             useNativeDriver: true,
           }).start();
         }
@@ -129,78 +186,116 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     })
   ).current;
 
-  // Actualizar posición y duración del audio
+  // Actualizar posición y duración del audio usando el callback nativo de expo-av
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    if (!sound) return;
 
-    const updateProgress = async () => {
-      if (sound) {
-        try {
-          const status = await sound.getStatusAsync();
-          if (status.isLoaded) {
-            setPosition(status.positionMillis || 0);
-            setDuration(status.durationMillis || 0);
-            setIsBuffering(status.isBuffering || false);
-
-            // Animar la barra de progreso
-            const progress = status.durationMillis 
-              ? (status.positionMillis || 0) / status.durationMillis 
-              : 0;
-            Animated.timing(progressAnim, {
-              toValue: progress,
-              duration: 200,
-              useNativeDriver: false,
-            }).start();
-          }
-        } catch (error) {
-          console.log('[FullPlayer] Error updating progress:', error);
+    // Usar el callback nativo en lugar de polling con setInterval
+    // Esto es MUCHO más eficiente y no bloquea el hilo de JS
+    const onPlaybackStatusUpdate = (status: any) => {
+      // No actualizar si estamos en medio de una animación o no es visible
+      if (isAnimating.current || !visible) return;
+      
+      if (status.isLoaded && !isSeeking) {
+        const currentPosition = status.positionMillis || 0;
+        const currentDuration = status.durationMillis || 0;
+        
+        // Throttle: solo actualizar estado cada 500ms para reducir re-renders
+        const now = Date.now();
+        if (now - lastPositionUpdate.current < 500) {
+          // Actualizar solo la barra de progreso (no causa re-render)
+          const progress = currentDuration 
+            ? currentPosition / currentDuration 
+            : 0;
+          progressAnim.setValue(progress);
+          return;
         }
+        
+        lastPositionUpdate.current = now;
+        
+        // Usar requestAnimationFrame para suavizar las actualizaciones del estado
+        if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+        }
+        
+        animationFrameId.current = requestAnimationFrame(() => {
+          setPosition(currentPosition);
+          setDuration(currentDuration);
+          setIsBuffering(status.isBuffering || false);
+          
+          // Actualizar la barra de progreso
+          const progress = currentDuration 
+            ? currentPosition / currentDuration 
+            : 0;
+          progressAnim.setValue(progress);
+        });
       }
     };
 
-    if (isPlaying) {
-      interval = setInterval(updateProgress, 500);
+    // Establecer el callback nativo
+    sound.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
+
+    // Limpiar el callback al desmontar
+    return () => {
+      sound.setOnPlaybackStatusUpdate(null);
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
+  }, [sound, visible, isSeeking]);
+
+  // Animaciones de loop solo cuando está reproduciendo
+  useEffect(() => {
+    // Solo iniciar animaciones si está visible y reproduciendo
+    if (isPlaying && visible && !isAnimating.current) {
       
-      // Animación del álbum art cuando está reproduciendo
-      Animated.loop(
+      // Animación MUY SUTIL del álbum art - más lenta y menos intensa
+      albumArtAnimation.current = Animated.loop(
         Animated.sequence([
           Animated.timing(albumArtScale, {
-            toValue: 1.02,
-            duration: 2000,
+            toValue: 1.01,  // Reducido de 1.02 a 1.01
+            duration: 3000,  // Aumentado de 2000 a 3000ms
             useNativeDriver: true,
           }),
           Animated.timing(albumArtScale, {
             toValue: 1,
-            duration: 2000,
+            duration: 3000,
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      albumArtAnimation.current.start();
 
-      // Animación de glow
-      Animated.loop(
+      // Animación de glow también más lenta
+      glowAnimation.current = Animated.loop(
         Animated.sequence([
           Animated.timing(glowAnim, {
             toValue: 1,
-            duration: 1500,
+            duration: 2500,  // Aumentado de 1500 a 2500ms
             useNativeDriver: true,
           }),
           Animated.timing(glowAnim, {
             toValue: 0,
-            duration: 1500,
+            duration: 2500,
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      glowAnimation.current.start();
     } else {
+      // Detener animaciones cuando no está reproduciendo
+      albumArtAnimation.current?.stop();
+      glowAnimation.current?.stop();
       albumArtScale.setValue(1);
       glowAnim.setValue(0);
     }
 
     return () => {
-      if (interval) clearInterval(interval);
+      // Detener animaciones al desmontar
+      albumArtAnimation.current?.stop();
+      glowAnimation.current?.stop();
     };
-  }, [isPlaying, sound]);
+  }, [isPlaying, visible]); // Agregar visible a las dependencias
 
   // Formatear tiempo en mm:ss
   const formatTime = (millis: number) => {
@@ -251,19 +346,35 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
   // Cerrar con animación
   const handleCloseWithAnimation = () => {
+    // Marcar que estamos animando
+    isAnimating.current = true;
+    
+    // Detener animaciones de loop para mejor rendimiento
+    albumArtAnimation.current?.stop();
+    glowAnimation.current?.stop();
+    
+    // Llamar onClose inmediatamente para que el SearchScreen prepare el mini player
+    onClose();
+    
+    // Ejecutar la animación de salida
     Animated.parallel([
-      Animated.timing(translateY, {
+      Animated.spring(translateY, {
         toValue: SCREEN_HEIGHT,
-        duration: 300,
+        friction: 10,
+        tension: 65,
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
-        duration: 250,
+        duration: 200,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onClose();
+      // Reactivar actualizaciones después de la animación
+      InteractionManager.runAfterInteractions(() => {
+        isAnimating.current = false;
+      });
     });
   };
 
@@ -313,6 +424,34 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         },
       ]
     );
+  };
+
+  // Toggle favoritos
+  const handleToggleFavorite = () => {
+    if (isFavorite) {
+      dispatch(removeFromFavorites(track.id) as any);
+      console.log('[FullPlayer] ❤️ Removed from favorites:', track.title);
+    } else {
+      // Determinar source: si isLocalFile es true Y el track tiene localUri, es 'local', sino 'streaming'
+      const hasLocalUri = !!(track as any).localUri || !!(track as any).local_file_uri;
+      const source = isLocalFile && hasLocalUri ? 'local' : 'streaming';
+      
+      console.log('[FullPlayer] 📊 Adding to favorites - Track info:', {
+        title: track.title,
+        isLocalFile,
+        hasLocalUri,
+        localUri: (track as any).localUri || (track as any).local_file_uri || 'NOT FOUND',
+        decidedSource: source,
+      });
+      
+      if (isLocalFile && !hasLocalUri) {
+        console.warn('[FullPlayer] ⚠️ Track marked as local but no localUri found, saving as streaming');
+        console.warn('[FullPlayer] 💡 Tip: Make sure to include localUri when setting currentTrack for local files');
+      }
+      
+      dispatch(addToFavorites(track, source) as any);
+      console.log(`[FullPlayer] ❤️ Added to favorites as ${source}:`, track.title);
+    }
   };
 
   // Manejar errores de reproducción
@@ -420,15 +559,16 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           <View style={styles.progressContainer}>
             <Slider
               style={styles.slider}
-              value={position}
+              value={isSeeking ? position : position}
               minimumValue={0}
               maximumValue={duration || 1}
               minimumTrackTintColor="#1DB954"
               maximumTrackTintColor="rgba(255,255,255,0.15)"
               thumbTintColor="#fff"
+              step={1000} // Actualizar cada segundo para reducir re-renders
               onSlidingStart={() => setIsSeeking(true)}
               onSlidingComplete={(value) => {
-                handleSeek(value / duration);
+                handleSeek(value / (duration || 1));
                 setIsSeeking(false);
               }}
               onValueChange={(value) => {
@@ -552,9 +692,17 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
               </BlurView>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.iconButton} 
+              activeOpacity={0.7}
+              onPress={handleToggleFavorite}
+            >
               <BlurView intensity={25} tint="dark" style={styles.iconButtonBlur}>
-                <Icon name="favorite-border" size={24} color="rgba(255,255,255,0.6)" />
+                <Icon 
+                  name={isFavorite ? "favorite" : "favorite-border"} 
+                  size={24} 
+                  color={isFavorite ? "#1DB954" : "rgba(255,255,255,0.6)"} 
+                />
               </BlurView>
             </TouchableOpacity>
           </View>

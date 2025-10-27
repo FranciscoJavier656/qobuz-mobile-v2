@@ -1,17 +1,63 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { Audio } from 'expo-av';
+
+export interface Track {
+  id: number;
+  title: string;
+  performer?: {
+    name: string;
+  };
+  album?: {
+    image?: {
+      small?: string;
+      thumbnail?: string;
+      large?: string;
+    };
+  };
+  duration?: number;
+  [key: string]: any;
+}
 
 interface PlayerContextType {
   fullPlayerVisible: boolean;
   setFullPlayerVisible: (visible: boolean) => void;
+  currentTrack: Track | null;
+  setCurrentTrack: (track: Track | null) => void;
+  isPlaying: boolean;
+  setIsPlaying: (playing: boolean) => void;
+  sound: Audio.Sound | null;
+  setSound: (sound: Audio.Sound | null) => void;
+  miniPlayerVisible: boolean;
+  setMiniPlayerVisible: (visible: boolean) => void;
+  isLocalFile: boolean;
+  setIsLocalFile: (isLocal: boolean) => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
 export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [fullPlayerVisible, setFullPlayerVisible] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [miniPlayerVisible, setMiniPlayerVisible] = useState(false);
+  const [isLocalFile, setIsLocalFile] = useState(false);
 
   return (
-    <PlayerContext.Provider value={{ fullPlayerVisible, setFullPlayerVisible }}>
+    <PlayerContext.Provider value={{ 
+      fullPlayerVisible, 
+      setFullPlayerVisible,
+      currentTrack,
+      setCurrentTrack,
+      isPlaying,
+      setIsPlaying,
+      sound,
+      setSound,
+      miniPlayerVisible,
+      setMiniPlayerVisible,
+      isLocalFile,
+      setIsLocalFile,
+    }}>
       {children}
     </PlayerContext.Provider>
   );

@@ -87,25 +87,59 @@ export class QobuzAPI {
     }
   }
 
-  public async getTrackStreamUrl(trackId: string, formatId: string = '27'): Promise<string> {
+  public async getTrackStreamUrl(
+    trackId: string, 
+    formatId: string = '27', 
+    intent: 'stream' | 'download' = 'stream'
+  ): Promise<string> {
     try {
-      if (!this.userAuthToken) {
-        throw new Error('Not authenticated');
-      }
-
+      console.log(`[QobuzAPI] 🎵 Getting ${intent} URL for track ${trackId} with format ${formatId}`);
+      
+      const timestamp = Math.floor(Date.now() / 1000);
+      const formatIdNum = parseInt(formatId, 10);
+      const trackIdNum = parseInt(trackId, 10);
+      
+      // Obtener app_secret (caché o extracción dinámica)
+      const appSecret = await this.getAppSecret();
+      
+      // Generar la firma MD5 con intent
+      const signature = this.generateRequestSignature(trackIdNum, formatIdNum, intent, timestamp, appSecret);
+      
+      console.log('[QobuzAPI] 🔐 Request params:', {
+        track_id: trackId,
+        format_id: formatId,
+        intent: intent,
+        request_ts: timestamp,
+        has_signature: !!signature,
+        has_token: !!this.userAuthToken
+      });
+      
       const response = await axios.get(`${this.BASE_URL}/track/getFileUrl`, {
         params: {
           track_id: trackId,
           format_id: formatId,
+          intent: intent,
           app_id: this.APP_ID,
           user_auth_token: this.userAuthToken,
+          request_ts: timestamp,
+          request_sig: signature,
         },
         headers: this.getHeaders(),
       });
 
+      if (response.data && response.data.url) {
+        console.log(`[QobuzAPI] ✅ ${intent} URL obtained successfully`);
+        return response.data.url;
+      }
+
       return response.data.url || '';
     } catch (error: any) {
-      console.error('Get track stream URL error:', error);
+      console.error(`[QobuzAPI] ❌ Get track ${intent} URL error:`, {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
       throw error;
     }
   }
@@ -269,12 +303,11 @@ export class QobuzAPI {
     return signature;
   }
 
-  public async getTrackFileUrl(trackId: number, intent: 'stream' | 'sample' = 'stream'): Promise<string> {
+  public async getTrackFileUrl(trackId: number, formatId: number = 5, intent: 'stream' | 'sample' = 'stream'): Promise<string> {
     try {
       const timestamp = Math.floor(Date.now() / 1000);
-      const formatId = 5; // Formato para preview (MP3 320)
       
-      console.log('[QobuzAPI] 🎵 Getting file URL for track:', trackId);
+      console.log('[QobuzAPI] 🎵 Getting file URL for track:', trackId, 'with format:', formatId, 'intent:', intent);
       
       // Obtener app_secret (caché o extracción dinámica)
       const appSecret = await this.getAppSecret();

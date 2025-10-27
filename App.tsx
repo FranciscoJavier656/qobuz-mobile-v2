@@ -14,13 +14,21 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import store from './src/store';
 import type { RootState } from './src/store';
 import { setUser, setToken } from './src/store/slices/authSlice';
+import { loadFavorites } from './src/store/slices/favoritesSlice';
+
+// Services
+import { downloadQueueManager } from './src/services/DownloadQueueManager';
 
 // Screens
 import SearchScreen from './src/screens/SearchScreen';
-import PlayerScreen from './src/screens/PlayerScreen';
+import LibraryScreen from './src/screens/LibraryScreen';
 import DownloadsScreen from './src/screens/DownloadsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import LoginScreen from './src/screens/LoginScreen';
+
+// Components
+import MiniPlayerWrapper from './src/components/MiniPlayerWrapper';
+import FullPlayerWrapper from './src/components/FullPlayerWrapper';
 
 // Hooks
 import { useSelector, useDispatch } from 'react-redux';
@@ -38,12 +46,12 @@ const MainTabs = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: 'search' | 'play-circle-filled' | 'file-download' | 'settings';
+          let iconName: 'search' | 'library-music' | 'file-download' | 'settings';
 
           if (route.name === 'Search') {
             iconName = 'search';
-          } else if (route.name === 'Player') {
-            iconName = 'play-circle-filled';
+          } else if (route.name === 'Library') {
+            iconName = 'library-music';
           } else if (route.name === 'Downloads') {
             iconName = 'file-download';
           } else if (route.name === 'Settings') {
@@ -77,9 +85,9 @@ const MainTabs = () => {
         options={{ title: 'Buscar' }}
       />
       <Tab.Screen 
-        name="Player" 
-        component={PlayerScreen}
-        options={{ title: 'Reproductor' }}
+        name="Library" 
+        component={LibraryScreen}
+        options={{ title: 'Biblioteca' }}
       />
       <Tab.Screen 
         name="Downloads" 
@@ -98,6 +106,7 @@ const MainTabs = () => {
 const AppNavigator = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const authToken = useSelector((state: RootState) => state.auth.token);
   const user = useSelector((state: RootState) => state.auth.user);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
@@ -118,6 +127,10 @@ const AppNavigator = () => {
           dispatch(setUser(userData));
           console.log('[AppNavigator] Sesión restaurada');
         }
+        
+        // Cargar favoritos desde AsyncStorage
+        dispatch(loadFavorites() as any);
+        console.log('[AppNavigator] Favoritos cargados');
       } catch (error) {
         console.error('[AppNavigator] Error cargando auth:', error);
       } finally {
@@ -127,6 +140,16 @@ const AppNavigator = () => {
     
     loadAuthState();
   }, [dispatch]);
+
+  // Inicializar DownloadQueueManager cuando hay autenticación
+  useEffect(() => {
+    if (isAuthenticated && authToken) {
+      console.log('[AppNavigator] Inicializando DownloadQueueManager');
+      downloadQueueManager.setAuthToken(authToken);
+      // Forzar procesamiento de cola pendiente
+      downloadQueueManager.forceProcessQueue();
+    }
+  }, [isAuthenticated, authToken]);
 
   // Monitorear cambios en isAuthenticated
   useEffect(() => {
@@ -166,6 +189,8 @@ export default function App() {
       <PlayerProvider>
         <SafeAreaProvider>
           <AppNavigator />
+          <MiniPlayerWrapper />
+          <FullPlayerWrapper />
         </SafeAreaProvider>
       </PlayerProvider>
     </Provider>
