@@ -91,6 +91,12 @@ export const processExistingDownloads = createAsyncThunk(
     const completedDownloads = downloads.filter((d: any) => d.status === 'completed');
     console.log('[LibrarySlice] 📥 Descargas completadas encontradas:', completedDownloads.length);
     
+    // Si hay descargas, limpiar la biblioteca primero para reprocesar todo
+    if (completedDownloads.length > 0) {
+      console.log('[LibrarySlice] 🧹 Limpiando biblioteca antes de reprocesar...');
+      dispatch(librarySlice.actions.clearLibrary());
+    }
+    
     // Procesar cada track
     for (const download of completedDownloads) {
       if (download.track) {
