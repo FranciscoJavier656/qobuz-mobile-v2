@@ -63,19 +63,91 @@ export const saveLibrary = createAsyncThunk(
   }
 );
 
-// Thunk para agregar metadatos y persistir
+// Thunk para agregar metadatos y persistir con información completa del artista
 export const addMetadataFromTrackAsync = createAsyncThunk(
   'library/addMetadataFromTrackAsync',
   async (track: Track, { dispatch, getState }) => {
-    // Primero agregar a la store
+    // Primero agregar a la store con los datos básicos
     dispatch(librarySlice.actions.addMetadataFromTrack(track));
     
-    // Luego persistir
+    // Si el track tiene performer con ID, intentar obtener info completa del artista
     const state = getState() as any;
+    const authToken = state.auth?.token;
+    const trackAny = track as any; // Necesario porque el tipo Track simplificado no incluye performer.id
+    
+    console.log('[LibrarySlice] 🔍 Verificando datos del performer:', {
+      hasPerformer: !!trackAny.performer,
+      performerName: trackAny.performer?.name,
+      performerId: trackAny.performer?.id,
+      hasAuthToken: !!authToken
+    });
+    
+    if (trackAny.performer?.id && authToken) {
+      try {
+        console.log('[LibrarySlice] 🌐 Solicitando info del artista desde Qobuz, ID:', trackAny.performer.id);
+        const artistInfo = await dispatch(fetchArtistInfo({
+          artistId: trackAny.performer.id,
+          authToken: authToken,
+        }));
+        
+        console.log('[LibrarySlice] 📦 Respuesta de fetchArtistInfo:', {
+          hasPayload: !!artistInfo.payload,
+          hasPicture: !!(artistInfo.payload as any)?.picture,
+          picture: (artistInfo.payload as any)?.picture
+        });
+        
+        // Si obtuvimos la info con imagen, actualizar el artista usando el reducer
+        if (artistInfo.payload && (artistInfo.payload as any).picture) {
+          dispatch(librarySlice.actions.updateArtistPicture({
+            artistName: track.performer?.name || '',
+            picture: (artistInfo.payload as any).picture
+          }));
+        }
+      } catch (error) {
+        console.log('[LibrarySlice] ⚠️ No se pudo obtener imagen del artista desde Qobuz:', error);
+        console.log('[LibrarySlice] 📸 Usando imagen del álbum como fallback');
+      }
+    } else {
+      if (!trackAny.performer?.id) {
+        console.log('[LibrarySlice] ⚠️ Track no tiene performer.id, no se puede obtener imagen de Qobuz');
+      }
+      if (!authToken) {
+        console.log('[LibrarySlice] ⚠️ No hay authToken, no se puede obtener imagen de Qobuz');
+      }
+    }
+    
+    // Luego persistir
+    const finalState = getState() as any;
     await dispatch(saveLibrary({
-      albums: state.library.albums,
-      artists: state.library.artists,
+      albums: finalState.library.albums,
+      artists: finalState.library.artists,
     }));
+  }
+);
+
+// Thunk para obtener información completa del artista desde Qobuz
+export const fetchArtistInfo = createAsyncThunk(
+  'library/fetchArtistInfo',
+  async ({ artistId, authToken }: { artistId: number; authToken: string }) => {
+    try {
+      console.log('[LibrarySlice] 🔍 Obteniendo info del artista desde Qobuz, ID:', artistId);
+      const { QobuzAPI } = require('../../services/qobuz/QobuzAPI');
+      const api = new QobuzAPI();
+      api.setAuthToken(authToken);
+      
+      const artistInfo = await api.fetchArtist(artistId.toString());
+      console.log('[LibrarySlice] ✅ Info del artista obtenida:', {
+        name: artistInfo.name,
+        hasPicture: !!artistInfo.picture,
+        pictureUrl: artistInfo.picture,
+        albumsCount: artistInfo.albums_count
+      });
+      
+      return artistInfo;
+    } catch (error) {
+      console.error('[LibrarySlice] ❌ Error obteniendo info del artista:', error);
+      throw error;
+    }
   }
 );
 
@@ -86,6 +158,7 @@ export const processExistingDownloads = createAsyncThunk(
     console.log('[LibrarySlice] 🔄 Reprocesando descargas existentes...');
     const state = getState() as any;
     const downloads = state.download?.downloads ?? [];
+    const authToken = state.auth?.token;
     
     // Filtrar solo descargas completadas
     const completedDownloads = downloads.filter((d: any) => d.status === 'completed');
@@ -102,6 +175,24 @@ export const processExistingDownloads = createAsyncThunk(
       if (download.track) {
         console.log('[LibrarySlice] ⚙️ Procesando track:', download.track.title);
         dispatch(librarySlice.actions.addMetadataFromTrack(download.track));
+        
+        // Si el track tiene performer con ID y tenemos auth token, obtener info completa del artista
+        const trackAny = download.track as any; // Necesario porque el tipo simplificado no incluye performer.id
+        if (trackAny.performer?.id && authToken) {
+          console.log('[LibrarySlice] 🌐 Solicitando info del artista para reproceso, ID:', trackAny.performer.id);
+          const artistInfo = await dispatch(fetchArtistInfo({
+            artistId: trackAny.performer.id,
+            authToken: authToken,
+          }));
+          
+          // Si obtuvimos la info, actualizar el artista con la imagen real usando el reducer
+          if (artistInfo.payload && (artistInfo.payload as any).picture) {
+            dispatch(librarySlice.actions.updateArtistPicture({
+              artistName: download.track.performer?.name || '',
+              picture: (artistInfo.payload as any).picture
+            }));
+          }
+        }
       }
     }
     
@@ -258,7 +349,7 @@ const librarySlice = createSlice({
         const artistId = Math.abs(artistIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
         const artistExists = state.artists.find(a => a.name === track.performer?.name);
         
-        // Usar la imagen del álbum como miniatura del artista
+        // Usar la imagen del álbum como miniatura del artista (temporal)
         const artistPicture = track.album?.image?.large || track.album?.image?.small || undefined;
         
         if (!artistExists) {
@@ -269,13 +360,19 @@ const librarySlice = createSlice({
             albums_count: 1,
           };
           state.artists.unshift(newArtist);
-          console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name, 'con imagen:', !!artistPicture);
+          console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name, 'con imagen temporal:', !!artistPicture);
           console.log('[LibrarySlice] 📊 Total artistas en biblioteca:', state.artists.length);
         } else {
+          // Incrementar contador de álbumes si el álbum es nuevo para este artista
+          if (track.album?.title) {
+            const artistAlbums = state.albums.filter(a => a.artist?.name === track.performer?.name);
+            artistExists.albums_count = artistAlbums.length;
+            console.log('[LibrarySlice] 📀 Albums del artista actualizados:', artistExists.albums_count);
+          }
           // Si el artista existe pero no tiene imagen y ahora sí la tenemos, actualizarla
           if (!artistExists.picture && artistPicture) {
             artistExists.picture = artistPicture;
-            console.log('[LibrarySlice] 🖼️ Imagen del artista actualizada:', artistExists.name);
+            console.log('[LibrarySlice] 🖼️ Imagen temporal del artista actualizada:', artistExists.name);
           }
           console.log('[LibrarySlice] ⚠️ Artist ya existe en biblioteca:', track.performer.name);
         }
@@ -284,6 +381,15 @@ const librarySlice = createSlice({
       }
       
       console.log('[LibrarySlice] ✨ Proceso completado. Albums:', state.albums.length, 'Artists:', state.artists.length);
+    },
+    
+    // Actualizar imagen real del artista desde Qobuz
+    updateArtistPicture: (state, action: PayloadAction<{ artistName: string; picture: string }>) => {
+      const artist = state.artists.find(a => a.name === action.payload.artistName);
+      if (artist) {
+        artist.picture = action.payload.picture;
+        console.log('[LibrarySlice] 🖼️ Imagen REAL del artista actualizada desde Qobuz:', artist.name);
+      }
     },
   },
   extraReducers: (builder) => {
@@ -316,6 +422,7 @@ export const {
   setRecentlyPlayed,
   clearLibrary,
   addMetadataFromTrack,
+  updateArtistPicture,
 } = librarySlice.actions;
 
 export default librarySlice.reducer;
