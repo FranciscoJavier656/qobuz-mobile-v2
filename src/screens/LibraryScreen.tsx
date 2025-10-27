@@ -438,12 +438,12 @@ const LibraryScreen = () => {
   }, [dispatch]);
 
   // Debug: Log de albums y artists cuando cambien
-  useEffect(() => {
-    console.log('[LibraryScreen] 📊 Estado actual de biblioteca:');
-    console.log('[LibraryScreen] 📀 Albums:', albumItems.length, albumItems);
-    console.log('[LibraryScreen] 🎤 Artists:', artistItems.length, artistItems);
-    console.log('[LibraryScreen] 📥 Downloads:', downloadItems.length);
-  }, [albumItems, artistItems, downloadItems]);
+  // useEffect(() => {
+  //   console.log('[LibraryScreen] 📊 Estado actual de biblioteca:');
+  //   console.log('[LibraryScreen] 📀 Albums:', albumItems.length, albumItems);
+  //   console.log('[LibraryScreen] 🎤 Artists:', artistItems.length, artistItems);
+  //   console.log('[LibraryScreen] 📥 Downloads:', downloadItems.length);
+  // }, [albumItems, artistItems, downloadItems]);
 
   useEffect(() => {
     // Animación de entrada

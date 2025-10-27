@@ -312,15 +312,15 @@ const librarySlice = createSlice({
     // Agregar metadatos desde track descargado
     addMetadataFromTrack: (state, action: PayloadAction<Track>) => {
       const track = action.payload;
-      console.log('[LibrarySlice] 🔍 Procesando track:', track.title);
-      console.log('[LibrarySlice] 🔍 Track completo:', JSON.stringify(track, null, 2));
+      // console.log('[LibrarySlice] 🔍 Procesando track:', track.title);
+      // console.log('[LibrarySlice] 🔍 Track completo:', JSON.stringify(track, null, 2));
       
       // Variable para rastrear si se agregó un álbum nuevo
       let albumWasAdded = false;
       
       // Agregar álbum si existe y tiene título
       if (track.album?.title) {
-        console.log('[LibrarySlice] 📀 Procesando álbum:', track.album.title);
+        // console.log('[LibrarySlice] 📀 Procesando álbum:', track.album.title);
         // Generar ID numérico basado en hash del título del álbum
         const albumIdStr = `${track.album.title}-${track.performer?.name || 'unknown'}`;
         const albumId = Math.abs(albumIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
@@ -337,16 +337,14 @@ const librarySlice = createSlice({
           };
           state.albums.unshift(newAlbum);
           albumWasAdded = true;
-          console.log('[LibrarySlice] ✅ Album agregado a biblioteca:', newAlbum.title);
-          console.log('[LibrarySlice] 📊 Total álbumes en biblioteca:', state.albums.length);
-        } else {
-          console.log('[LibrarySlice] ⚠️ Album ya existe en biblioteca:', track.album.title);
+          console.log('[LibrarySlice] ✅ Album agregado:', newAlbum.title);
+          // console.log('[LibrarySlice] 📊 Total álbumes en biblioteca:', state.albums.length);
         }
       }
       
       // Agregar artista (performer) si existe
       if (track.performer?.name) {
-        console.log('[LibrarySlice] 🎤 Procesando artista:', track.performer.name);
+        // console.log('[LibrarySlice] 🎤 Procesando artista:', track.performer.name);
         // Generar ID numérico basado en hash del nombre del artista
         const artistIdStr = track.performer.name;
         const artistId = Math.abs(artistIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
@@ -366,27 +364,24 @@ const librarySlice = createSlice({
             albums_count: artistAlbumsCount,
           };
           state.artists.unshift(newArtist);
-          console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name, 'con', artistAlbumsCount, 'álbumes');
-          console.log('[LibrarySlice] 📊 Total artistas en biblioteca:', state.artists.length);
+          console.log('[LibrarySlice] ✅ Artist agregado:', newArtist.name, 'con', artistAlbumsCount, 'álbumes');
+          // console.log('[LibrarySlice] 📊 Total artistas en biblioteca:', state.artists.length);
         } else {
           // Si se agregó un álbum nuevo, actualizar el contador
           if (albumWasAdded) {
             const artistAlbumsCount = state.albums.filter(a => a.artist?.name === track.performer?.name).length;
             artistExists.albums_count = artistAlbumsCount;
-            console.log('[LibrarySlice] 📀 Albums del artista actualizados:', artistExists.name, '->', artistAlbumsCount, 'álbumes');
+            console.log('[LibrarySlice] 📀 Albums del artista actualizados:', artistExists.name, '->', artistAlbumsCount);
           }
           // Si el artista existe pero no tiene imagen y ahora sí la tenemos, actualizarla
           if (!artistExists.picture && artistPicture) {
             artistExists.picture = artistPicture;
-            console.log('[LibrarySlice] 🖼️ Imagen temporal del artista actualizada:', artistExists.name);
+            // console.log('[LibrarySlice] 🖼️ Imagen temporal del artista actualizada:', artistExists.name);
           }
-          console.log('[LibrarySlice] ⚠️ Artist ya existe en biblioteca:', track.performer.name);
         }
-      } else {
-        console.log('[LibrarySlice] ⚠️ Track no tiene performer');
       }
       
-      console.log('[LibrarySlice] ✨ Proceso completado. Albums:', state.albums.length, 'Artists:', state.artists.length);
+      // console.log('[LibrarySlice] ✨ Proceso completado. Albums:', state.albums.length, 'Artists:', state.artists.length);
     },
     
     // Actualizar imagen real del artista desde Qobuz
