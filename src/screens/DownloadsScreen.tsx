@@ -20,6 +20,7 @@ import {
   type DownloadItem,
   type DownloadSliceState,
 } from '../slices/downloadSlice';
+import { addMetadataFromTrack } from '../store/slices/librarySlice';
 import { usePlayerContext } from '../contexts/PlayerContext';
 
 // Selectores memoizados
@@ -126,6 +127,9 @@ const DownloadsScreen = () => {
         localUri: download.localPath,
         local_file_uri: download.localPath, // Alias por compatibilidad
       };
+
+      // Agregar metadatos del track a la biblioteca
+      dispatch(addMetadataFromTrack(download.track));
 
       // Actualizar el contexto del player
       playerContext.setSound(sound);

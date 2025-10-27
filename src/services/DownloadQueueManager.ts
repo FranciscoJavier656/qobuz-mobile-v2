@@ -6,6 +6,7 @@ import {
   startDownload as startDownloadAction,
   type DownloadItem,
 } from '../slices/downloadSlice';
+import { addMetadataFromTrack } from '../store/slices/librarySlice';
 
 /**
  * Gestor de cola de descargas
@@ -110,6 +111,11 @@ export class DownloadQueueManager {
             status: 'completed',
             localPath,
           }));
+          
+          // Agregar metadatos del track a la biblioteca
+          console.log('[DownloadQueue] Agregando metadatos a biblioteca...');
+          store.dispatch(addMetadataFromTrack(download.track));
+          
           this.currentDownloads--;
           this.processQueue(); // Procesar siguiente
         },

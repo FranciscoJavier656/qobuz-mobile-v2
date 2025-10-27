@@ -126,6 +126,51 @@ const librarySlice = createSlice({
       state.playlists = [];
       state.recentlyPlayed = [];
     },
+
+    // Agregar metadatos desde track descargado
+    addMetadataFromTrack: (state, action: PayloadAction<Track>) => {
+      const track = action.payload;
+      
+      // Agregar álbum si existe y tiene título
+      if (track.album?.title) {
+        // Generar ID numérico basado en hash del título del álbum
+        const albumIdStr = `${track.album.title}-${track.performer?.name || 'unknown'}`;
+        const albumId = Math.abs(albumIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
+        const albumExists = state.albums.find(a => a.title === track.album?.title && a.artist?.name === track.performer?.name);
+        
+        if (!albumExists) {
+          const newAlbum: Album = {
+            id: albumId,
+            title: track.album.title,
+            artist: track.performer ? { name: track.performer.name } : undefined,
+            image: track.album.image,
+            tracks_count: 1,
+            duration: track.duration,
+          };
+          state.albums.unshift(newAlbum);
+          console.log('[LibrarySlice] ✅ Album agregado a biblioteca:', newAlbum.title);
+        }
+      }
+      
+      // Agregar artista (performer) si existe
+      if (track.performer?.name) {
+        // Generar ID numérico basado en hash del nombre del artista
+        const artistIdStr = track.performer.name;
+        const artistId = Math.abs(artistIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
+        const artistExists = state.artists.find(a => a.name === track.performer?.name);
+        
+        if (!artistExists) {
+          const newArtist: Artist = {
+            id: artistId,
+            name: track.performer.name,
+            picture: undefined,
+            albums_count: 1,
+          };
+          state.artists.unshift(newArtist);
+          console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name);
+        }
+      }
+    },
   },
 });
 
@@ -147,6 +192,7 @@ export const {
   addToRecentlyPlayed,
   setRecentlyPlayed,
   clearLibrary,
+  addMetadataFromTrack,
 } = librarySlice.actions;
 
 export default librarySlice.reducer;
