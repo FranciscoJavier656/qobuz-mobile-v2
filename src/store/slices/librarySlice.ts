@@ -316,6 +316,9 @@ const librarySlice = createSlice({
       console.log('[LibrarySlice] 🔍 Procesando track:', track.title);
       console.log('[LibrarySlice] 🔍 Track completo:', JSON.stringify(track, null, 2));
       
+      // Variable para rastrear si se agregó un álbum nuevo
+      let albumWasAdded = false;
+      
       // Agregar álbum si existe y tiene título
       if (track.album?.title) {
         console.log('[LibrarySlice] 📀 Procesando álbum:', track.album.title);
@@ -334,6 +337,7 @@ const librarySlice = createSlice({
             duration: track.duration,
           };
           state.albums.unshift(newAlbum);
+          albumWasAdded = true;
           console.log('[LibrarySlice] ✅ Album agregado a biblioteca:', newAlbum.title);
           console.log('[LibrarySlice] 📊 Total álbumes en biblioteca:', state.albums.length);
         } else {
@@ -353,21 +357,24 @@ const librarySlice = createSlice({
         const artistPicture = track.album?.image?.large || track.album?.image?.small || undefined;
         
         if (!artistExists) {
+          // Contar álbumes de este artista
+          const artistAlbumsCount = state.albums.filter(a => a.artist?.name === track.performer?.name).length;
+          
           const newArtist: Artist = {
             id: artistId,
             name: track.performer.name,
             picture: artistPicture,
-            albums_count: 1,
+            albums_count: artistAlbumsCount,
           };
           state.artists.unshift(newArtist);
-          console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name, 'con imagen temporal:', !!artistPicture);
+          console.log('[LibrarySlice] ✅ Artist agregado a biblioteca:', newArtist.name, 'con', artistAlbumsCount, 'álbumes');
           console.log('[LibrarySlice] 📊 Total artistas en biblioteca:', state.artists.length);
         } else {
-          // Incrementar contador de álbumes si el álbum es nuevo para este artista
-          if (track.album?.title) {
-            const artistAlbums = state.albums.filter(a => a.artist?.name === track.performer?.name);
-            artistExists.albums_count = artistAlbums.length;
-            console.log('[LibrarySlice] 📀 Albums del artista actualizados:', artistExists.albums_count);
+          // Si se agregó un álbum nuevo, actualizar el contador
+          if (albumWasAdded) {
+            const artistAlbumsCount = state.albums.filter(a => a.artist?.name === track.performer?.name).length;
+            artistExists.albums_count = artistAlbumsCount;
+            console.log('[LibrarySlice] 📀 Albums del artista actualizados:', artistExists.name, '->', artistAlbumsCount, 'álbumes');
           }
           // Si el artista existe pero no tiene imagen y ahora sí la tenemos, actualizarla
           if (!artistExists.picture && artistPicture) {
