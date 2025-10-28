@@ -6,6 +6,7 @@ import {
   startDownload as startDownloadAction,
   type DownloadItem,
 } from '../slices/downloadSlice';
+import { saveDownloads } from '../store/slices/downloadSlice';
 import { addMetadataFromTrackAsync } from '../store/slices/librarySlice';
 
 /**
@@ -115,6 +116,10 @@ export class DownloadQueueManager {
           // Agregar metadatos del track a la biblioteca
           console.log('[DownloadQueue] Agregando metadatos a biblioteca...');
           store.dispatch(addMetadataFromTrackAsync(download.track));
+          
+          // Guardar descargas en AsyncStorage
+          console.log('[DownloadQueue] Guardando descargas en AsyncStorage...');
+          store.dispatch(saveDownloads() as any);
           
           this.currentDownloads--;
           this.processQueue(); // Procesar siguiente

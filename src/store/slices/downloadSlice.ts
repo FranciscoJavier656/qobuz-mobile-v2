@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Track } from '../../services/qobuz/types';
 import { DownloadManager } from '../../services/DownloadManager';
 
@@ -56,6 +57,54 @@ const initialState: DownloadSliceState = {
     errorCount: 0,
   },
 };
+
+// Thunk para cargar descargas desde AsyncStorage
+export const loadDownloads = createAsyncThunk(
+  'download/loadDownloads',
+  async () => {
+    try {
+      console.log('[downloadSlice] 📂 Cargando descargas desde AsyncStorage...');
+      const downloadsJson = await AsyncStorage.getItem('downloads');
+      const statsJson = await AsyncStorage.getItem('downloads_stats');
+      
+      if (downloadsJson) {
+        const downloads = JSON.parse(downloadsJson);
+        const stats = statsJson ? JSON.parse(statsJson) : initialState.stats;
+        console.log('[downloadSlice] ✅ Descargas cargadas:', downloads.length, 'tracks');
+        console.log('[downloadSlice] 📊 Stats:', stats);
+        return { downloads, stats };
+      }
+      
+      console.log('[downloadSlice] ℹ️ No hay descargas guardadas');
+      return { downloads: [], stats: initialState.stats };
+    } catch (error) {
+      console.error('[downloadSlice] ❌ Error cargando descargas:', error);
+      return { downloads: [], stats: initialState.stats };
+    }
+  }
+);
+
+// Thunk para guardar descargas en AsyncStorage
+export const saveDownloads = createAsyncThunk(
+  'download/saveDownloads',
+  async (_, { getState }) => {
+    try {
+      const state = getState() as { download: DownloadSliceState };
+      
+      // Solo guardar descargas completadas para evitar inconsistencias
+      const completedDownloads = state.download.downloads.filter(d => d.status === 'completed');
+      
+      await AsyncStorage.setItem('downloads', JSON.stringify(completedDownloads));
+      await AsyncStorage.setItem('downloads_stats', JSON.stringify(state.download.stats));
+      
+      console.log('[downloadSlice] ✅ Descargas guardadas en AsyncStorage:', completedDownloads.length, 'tracks');
+      return true;
+    } catch (error) {
+      console.error('[downloadSlice] ❌ Error guardando descargas:', error);
+      return false;
+    }
+  }
+);
 
 // Thunk para eliminar descarga Y archivo físico
 export const deleteDownloadWithFile = createAsyncThunk(
@@ -181,6 +230,9 @@ const downloadSlice = createSlice({
           state.stats.successCount++;
           state.stats.totalDownloaded++;
           state.stats.totalSize += download.totalBytes;
+          
+          // Auto-guardar cuando se completa una descarga
+          console.log('[downloadSlice] 💾 Auto-guardando descarga completada...');
         }
         
         if (action.payload.status === 'error') {
@@ -254,29 +306,39 @@ const downloadSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(deleteDownloadWithFile.fulfilled, (state, action) => {
-      const { downloadId, download } = action.payload;
-      
-      // Actualizar estadísticas si la descarga estaba completada o tenía error
-      if (download) {
-        if (download.status === 'completed' && download.downloadedBytes > 0) {
-          state.stats.totalSize = Math.max(0, state.stats.totalSize - download.downloadedBytes);
-          state.stats.successCount = Math.max(0, state.stats.successCount - 1);
-          console.log('[downloadSlice] 📊 Stats updated after file deletion - Size:', state.stats.totalSize, 'Success count:', state.stats.successCount);
-        } else if (download.status === 'error') {
-          state.stats.errorCount = Math.max(0, state.stats.errorCount - 1);
+    builder
+      .addCase(loadDownloads.fulfilled, (state, action) => {
+        const { downloads, stats } = action.payload;
+        state.downloads = downloads;
+        state.stats = stats;
+        console.log('[downloadSlice] ✅ Estado de descargas restaurado');
+      })
+      .addCase(deleteDownloadWithFile.fulfilled, (state, action) => {
+        const { downloadId, download } = action.payload;
+        
+        // Actualizar estadísticas si la descarga estaba completada o tenía error
+        if (download) {
+          if (download.status === 'completed' && download.downloadedBytes > 0) {
+            state.stats.totalSize = Math.max(0, state.stats.totalSize - download.downloadedBytes);
+            state.stats.successCount = Math.max(0, state.stats.successCount - 1);
+            console.log('[downloadSlice] 📊 Stats updated after file deletion - Size:', state.stats.totalSize, 'Success count:', state.stats.successCount);
+          } else if (download.status === 'error') {
+            state.stats.errorCount = Math.max(0, state.stats.errorCount - 1);
+          }
         }
-      }
-      
-      // Eliminar de la lista
-      state.downloads = state.downloads.filter(d => d.id !== downloadId);
-      state.queue = state.queue.filter(id => id !== downloadId);
-      
-      if (state.currentDownloadId === downloadId) {
-        state.currentDownloadId = null;
-        state.isDownloading = false;
-      }
-    });
+        
+        // Eliminar de la lista
+        state.downloads = state.downloads.filter(d => d.id !== downloadId);
+        state.queue = state.queue.filter(id => id !== downloadId);
+        
+        if (state.currentDownloadId === downloadId) {
+          state.currentDownloadId = null;
+          state.isDownloading = false;
+        }
+        
+        // Auto-guardar después de eliminar
+        console.log('[downloadSlice] 💾 Auto-guardando después de eliminación...');
+      });
   },
 });
 

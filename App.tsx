@@ -15,6 +15,7 @@ import store from './src/store';
 import type { RootState } from './src/store';
 import { setUser, setToken } from './src/store/slices/authSlice';
 import { loadFavorites } from './src/store/slices/favoritesSlice';
+import { loadDownloads } from './src/store/slices/downloadSlice';
 
 // Services
 import { downloadQueueManager } from './src/services/DownloadQueueManager';
@@ -132,6 +133,10 @@ const AppNavigator = () => {
         // Cargar favoritos desde AsyncStorage
         dispatch(loadFavorites() as any);
         console.log('[AppNavigator] Favoritos cargados');
+        
+        // Cargar descargas desde AsyncStorage
+        dispatch(loadDownloads() as any);
+        console.log('[AppNavigator] Descargas cargadas');
       } catch (error) {
         console.error('[AppNavigator] Error cargando auth:', error);
       } finally {
