@@ -18,6 +18,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
 import { updateSettings } from '../store/slices/downloadSlice';
+import { addToFavorites } from '../store/slices/favoritesSlice';
+import { QobuzAPI } from '../services/qobuz/QobuzAPI';
 
 const QUALITY_OPTIONS = [
   { id: '5', label: 'MP3 320kbps', subtitle: 'Alta calidad, menor tamaño' },
@@ -30,7 +32,9 @@ const SettingsScreen = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
   const { settings } = useSelector((state: RootState) => state.download);
+  const authToken = useSelector((state: RootState) => state.auth.token);
   const [showQualityModal, setShowQualityModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -81,7 +85,7 @@ const SettingsScreen = () => {
           const info = await FileSystem.getInfoAsync(filePath);
           return {
             filename,
-            size: info.size ? `${(info.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
+            size: (info as any).size ? `${((info as any).size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
             path: filePath,
           };
         })
@@ -103,6 +107,108 @@ const SettingsScreen = () => {
       console.error('[SettingsScreen] ❌ Error listando archivos:', error);
       Alert.alert('Error', `No se pudo listar los archivos: ${error}`);
     }
+  };
+
+  const handleSyncDownloads = async () => {
+    if (isSyncing) {
+      Alert.alert('Sincronizando', 'Ya hay una sincronización en progreso...');
+      return;
+    }
+
+    if (!authToken) {
+      Alert.alert('Error', 'No hay token de autenticación. Por favor inicia sesión nuevamente.');
+      return;
+    }
+
+    Alert.alert(
+      'Sincronizar Descargas',
+      '¿Deseas sincronizar los archivos descargados con la biblioteca? Esto buscará los metadatos en Qobuz.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sincronizar',
+          onPress: async () => {
+            setIsSyncing(true);
+            try {
+              const downloadsDir = `${FileSystem.documentDirectory}downloads/`;
+              const dirInfo = await FileSystem.getInfoAsync(downloadsDir);
+              
+              if (!dirInfo.exists) {
+                Alert.alert('Sin archivos', 'No hay directorio de descargas.');
+                setIsSyncing(false);
+                return;
+              }
+              
+              const files = await FileSystem.readDirectoryAsync(downloadsDir);
+              console.log('[SettingsScreen] 🔄 Sincronizando', files.length, 'archivos...');
+              
+              if (files.length === 0) {
+                Alert.alert('Sin archivos', 'No hay archivos para sincronizar.');
+                setIsSyncing(false);
+                return;
+              }
+              
+              const qobuzAPI = new QobuzAPI();
+              qobuzAPI.setAuthToken(authToken);
+              
+              let syncedCount = 0;
+              let errorCount = 0;
+              
+              for (const filename of files) {
+                try {
+                  // Extraer artista y título del nombre del archivo
+                  const nameWithoutExt = filename.replace(/\.(flac|mp3)$/i, '');
+                  const [artist, title] = nameWithoutExt.split(' - ');
+                  
+                  if (!artist || !title) {
+                    console.log('[SettingsScreen] ⚠️ No se pudo parsear:', filename);
+                    errorCount++;
+                    continue;
+                  }
+                  
+                  console.log('[SettingsScreen] 🔍 Buscando:', artist, '-', title);
+                  
+                  // Buscar en Qobuz
+                  const searchQuery = `${artist} ${title}`;
+                  const searchResults = await qobuzAPI.searchTracks(searchQuery, 5);
+                  
+                  if (searchResults && searchResults.length > 0) {
+                    // Tomar el primer resultado
+                    const track = searchResults[0];
+                    const filePath = `${downloadsDir}${filename}`;
+                    
+                    console.log('[SettingsScreen] ✅ Track encontrado:', track.title, 'by', track.performer?.name);
+                    
+                    // Agregar a favoritos locales
+                    dispatch(addToFavorites(track, 'local') as any);
+                    syncedCount++;
+                  } else {
+                    console.log('[SettingsScreen] ❌ No se encontró en Qobuz:', searchQuery);
+                    errorCount++;
+                  }
+                } catch (error) {
+                  console.error('[SettingsScreen] ❌ Error procesando', filename, ':', error);
+                  errorCount++;
+                }
+              }
+              
+              Alert.alert(
+                'Sincronización Completa',
+                `✅ Sincronizados: ${syncedCount}\n❌ Errores: ${errorCount}\n\nLos tracks sincronizados ahora aparecerán en tu biblioteca.`,
+                [{ text: 'OK' }]
+              );
+              
+              console.log('[SettingsScreen] 🎉 Sincronización completada:', syncedCount, 'éxitos,', errorCount, 'errores');
+            } catch (error) {
+              console.error('[SettingsScreen] ❌ Error en sincronización:', error);
+              Alert.alert('Error', `No se pudo completar la sincronización: ${error}`);
+            } finally {
+              setIsSyncing(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getQualityLabel = () => {
@@ -182,10 +288,10 @@ const SettingsScreen = () => {
         <Text style={styles.sectionTitle}>Descargas</Text>
         
         <SettingItem
-          icon="folder"
-          title="Carpeta de Descargas"
-          subtitle="/storage/emulated/0/Music"
-          onPress={() => {}}
+          icon="sync"
+          title="Sincronizar Descargas"
+          subtitle={isSyncing ? "Sincronizando..." : "Obtener metadatos de archivos descargados"}
+          onPress={handleSyncDownloads}
         />
         
         <SettingItem
@@ -193,6 +299,13 @@ const SettingsScreen = () => {
           title="Listar Archivos Descargados"
           subtitle="Ver archivos en el directorio"
           onPress={handleListDownloadFiles}
+        />
+        
+        <SettingItem
+          icon="folder"
+          title="Carpeta de Descargas"
+          subtitle="/storage/emulated/0/Music"
+          onPress={() => {}}
         />
         
         <SettingItem
