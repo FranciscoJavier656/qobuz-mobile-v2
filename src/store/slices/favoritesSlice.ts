@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { Track } from '../../services/qobuz/types';
 
 const FAVORITES_STORAGE_KEY = '@qobuz_favorites';
@@ -115,6 +116,63 @@ export const correctFavoriteSource = (trackId: number, newSource: 'local' | 'str
     dispatch(setFavorites(updatedTracks));
     await dispatch(saveFavoritesToStorage(updatedTracks));
     console.log(`[FavoritesSlice] ✅ Corrected favorite source for track ${trackId} to ${newSource}`);
+  }
+};
+
+// Thunk para validar favoritos locales y eliminar los que no tienen archivo
+export const validateLocalFavorites = () => async (dispatch: any, getState: any) => {
+  const { favorites } = getState();
+  const localFavorites = favorites.tracks.filter((t: FavoriteTrack) => t.favoriteSource === 'local');
+  
+  if (localFavorites.length === 0) {
+    console.log('[FavoritesSlice] ℹ️ No hay favoritos locales para validar');
+    return;
+  }
+  
+  console.log('[FavoritesSlice] 🔍 Validando', localFavorites.length, 'favoritos locales...');
+  
+  const validatedTracks: FavoriteTrack[] = [];
+  const invalidTracks: FavoriteTrack[] = [];
+  
+  for (const track of localFavorites) {
+    // Construir la ruta esperada del archivo
+    const sanitizeFilename = (str: string) => str.replace(/[/\\?%*:|"<>]/g, '-');
+    const artist = track.performer?.name || track.artist?.name || 'Unknown Artist';
+    const title = track.title || 'Unknown Track';
+    const filename = `${sanitizeFilename(artist)} - ${sanitizeFilename(title)}.flac`;
+    const localPath = `${FileSystem.documentDirectory}downloads/${filename}`;
+    
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(localPath);
+      
+      if (fileInfo.exists) {
+        validatedTracks.push(track);
+        console.log('[FavoritesSlice] ✅ Archivo existe:', filename);
+      } else {
+        invalidTracks.push(track);
+        console.log('[FavoritesSlice] ❌ Archivo no existe:', filename);
+      }
+    } catch (error) {
+      invalidTracks.push(track);
+      console.log('[FavoritesSlice] ❌ Error verificando archivo:', filename, error);
+    }
+  }
+  
+  // Si hay tracks inválidos, eliminarlos de favoritos
+  if (invalidTracks.length > 0) {
+    console.log('[FavoritesSlice] 🗑️ Eliminando', invalidTracks.length, 'favoritos sin archivo local');
+    
+    // Mantener todos los favoritos excepto los locales inválidos
+    const streamingFavorites = favorites.tracks.filter((t: FavoriteTrack) => t.favoriteSource === 'streaming');
+    const updatedTracks = [...streamingFavorites, ...validatedTracks];
+    
+    dispatch(setFavorites(updatedTracks));
+    await dispatch(saveFavoritesToStorage(updatedTracks));
+    
+    console.log('[FavoritesSlice] ✅ Favoritos actualizados. Total:', updatedTracks.length, 
+                '(Streaming:', streamingFavorites.length, ', Local:', validatedTracks.length, ')');
+  } else {
+    console.log('[FavoritesSlice] ✅ Todos los favoritos locales tienen archivos válidos');
   }
 };
 

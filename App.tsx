@@ -14,7 +14,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import store from './src/store';
 import type { RootState } from './src/store';
 import { setUser, setToken } from './src/store/slices/authSlice';
-import { loadFavorites } from './src/store/slices/favoritesSlice';
+import { loadFavorites, validateLocalFavorites } from './src/store/slices/favoritesSlice';
 import { loadDownloads } from './src/store/slices/downloadSlice';
 
 // Services
@@ -131,8 +131,12 @@ const AppNavigator = () => {
         }
         
         // Cargar favoritos desde AsyncStorage
-        dispatch(loadFavorites() as any);
+        await dispatch(loadFavorites() as any);
         console.log('[AppNavigator] Favoritos cargados');
+        
+        // Validar favoritos locales (eliminar los que no tienen archivo)
+        await dispatch(validateLocalFavorites() as any);
+        console.log('[AppNavigator] Favoritos locales validados');
         
         // Cargar descargas desde AsyncStorage
         dispatch(loadDownloads() as any);
