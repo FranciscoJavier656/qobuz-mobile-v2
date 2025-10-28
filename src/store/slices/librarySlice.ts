@@ -158,39 +158,60 @@ export const processExistingDownloads = createAsyncThunk(
     console.log('[LibrarySlice] 🔄 Reprocesando descargas existentes...');
     const state = getState() as any;
     const downloads = state.download?.downloads ?? [];
+    const favorites = state.favorites?.tracks ?? [];
     const authToken = state.auth?.token;
     
     // Filtrar solo descargas completadas
     const completedDownloads = downloads.filter((d: any) => d.status === 'completed');
     console.log('[LibrarySlice] 📥 Descargas completadas encontradas:', completedDownloads.length);
     
-    // Si hay descargas, limpiar la biblioteca primero para reprocesar todo
-    if (completedDownloads.length > 0) {
+    // Filtrar favoritos locales (tracks descargadas marcadas como favoritas)
+    const localFavorites = favorites.filter((f: any) => f.favoriteSource === 'local');
+    console.log('[LibrarySlice] 📥 Favoritos locales encontrados:', localFavorites.length);
+    
+    // Combinar ambas fuentes de tracks descargadas
+    const allLocalTracks: any[] = [];
+    
+    // Agregar descargas completadas
+    completedDownloads.forEach((d: any) => {
+      if (d.track) allLocalTracks.push(d.track);
+    });
+    
+    // Agregar favoritos locales (que son tracks descargadas)
+    localFavorites.forEach((f: any) => {
+      // Solo agregar si no está ya en la lista (evitar duplicados)
+      if (!allLocalTracks.find(t => t.id === f.id)) {
+        allLocalTracks.push(f);
+      }
+    });
+    
+    console.log('[LibrarySlice] 📊 Total de tracks locales a procesar:', allLocalTracks.length);
+    
+    // Si hay tracks, limpiar la biblioteca primero para reprocesar todo
+    if (allLocalTracks.length > 0) {
       console.log('[LibrarySlice] 🧹 Limpiando biblioteca antes de reprocesar...');
       dispatch(librarySlice.actions.clearLibrary());
     }
     
     // Procesar cada track
-    for (const download of completedDownloads) {
-      if (download.track) {
-        console.log('[LibrarySlice] ⚙️ Procesando track:', download.track.title);
-        dispatch(librarySlice.actions.addMetadataFromTrack(download.track));
+    for (const track of allLocalTracks) {
+      console.log('[LibrarySlice] ⚙️ Procesando track:', track.title);
+      dispatch(librarySlice.actions.addMetadataFromTrack(track));
+      
+      // Si el track tiene performer con ID y tenemos auth token, obtener info completa del artista
+      if (track.performer?.id && authToken) {
+        console.log('[LibrarySlice] 🌐 Solicitando info del artista para reproceso, ID:', track.performer.id);
+        const artistInfo = await dispatch(fetchArtistInfo({
+          artistId: track.performer.id,
+          authToken: authToken,
+        }));
         
-        // Si el track tiene performer con ID y tenemos auth token, obtener info completa del artista
-        if (download.track.performer?.id && authToken) {
-          console.log('[LibrarySlice] 🌐 Solicitando info del artista para reproceso, ID:', download.track.performer.id);
-          const artistInfo = await dispatch(fetchArtistInfo({
-            artistId: download.track.performer.id,
-            authToken: authToken,
+        // Si obtuvimos la info, actualizar el artista con la imagen real usando el reducer
+        if (artistInfo.payload && (artistInfo.payload as any).picture) {
+          dispatch(librarySlice.actions.updateArtistPicture({
+            artistName: track.performer?.name || '',
+            picture: (artistInfo.payload as any).picture
           }));
-          
-          // Si obtuvimos la info, actualizar el artista con la imagen real usando el reducer
-          if (artistInfo.payload && (artistInfo.payload as any).picture) {
-            dispatch(librarySlice.actions.updateArtistPicture({
-              artistName: download.track.performer?.name || '',
-              picture: (artistInfo.payload as any).picture
-            }));
-          }
         }
       }
     }
