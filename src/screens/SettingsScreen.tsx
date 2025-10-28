@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Store
 import { RootState } from '../store';
@@ -50,7 +51,58 @@ const SettingsScreen = () => {
     console.log('[SettingsScreen] 🎯 Changing quality to:', qualityId);
     dispatch(updateSettings({ defaultQuality: qualityId }));
     setShowQualityModal(false);
-    console.log('[SettingsScreen] ✅ Quality updated in Redux');
+  };
+
+  const handleListDownloadFiles = async () => {
+    try {
+      const downloadsDir = `${FileSystem.documentDirectory}downloads/`;
+      console.log('[SettingsScreen] 📂 Listando archivos en:', downloadsDir);
+      
+      const dirInfo = await FileSystem.getInfoAsync(downloadsDir);
+      
+      if (!dirInfo.exists) {
+        Alert.alert('Directorio vacío', 'No existe el directorio de descargas aún.');
+        return;
+      }
+      
+      const files = await FileSystem.readDirectoryAsync(downloadsDir);
+      
+      console.log('[SettingsScreen] 📁 Archivos encontrados:', files.length);
+      
+      if (files.length === 0) {
+        Alert.alert('Sin archivos', 'No hay archivos descargados en el directorio.');
+        return;
+      }
+      
+      // Obtener información detallada de cada archivo
+      const filesInfo = await Promise.all(
+        files.map(async (filename) => {
+          const filePath = `${downloadsDir}${filename}`;
+          const info = await FileSystem.getInfoAsync(filePath);
+          return {
+            filename,
+            size: info.size ? `${(info.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
+            path: filePath,
+          };
+        })
+      );
+      
+      console.log('[SettingsScreen] 📋 Detalles de archivos:', filesInfo);
+      
+      const filesList = filesInfo.map((f, i) => 
+        `${i + 1}. ${f.filename}\n   Tamaño: ${f.size}\n   Ruta: ${f.path}`
+      ).join('\n\n');
+      
+      Alert.alert(
+        `Archivos Descargados (${files.length})`,
+        filesList,
+        [{ text: 'OK' }],
+        { cancelable: true }
+      );
+    } catch (error) {
+      console.error('[SettingsScreen] ❌ Error listando archivos:', error);
+      Alert.alert('Error', `No se pudo listar los archivos: ${error}`);
+    }
   };
 
   const getQualityLabel = () => {
@@ -134,6 +186,13 @@ const SettingsScreen = () => {
           title="Carpeta de Descargas"
           subtitle="/storage/emulated/0/Music"
           onPress={() => {}}
+        />
+        
+        <SettingItem
+          icon="list"
+          title="Listar Archivos Descargados"
+          subtitle="Ver archivos en el directorio"
+          onPress={handleListDownloadFiles}
         />
         
         <SettingItem
