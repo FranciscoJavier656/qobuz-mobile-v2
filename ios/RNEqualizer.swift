@@ -160,9 +160,20 @@ class RNEqualizer: NSObject {
                     return
                 }
                 
-                let fileURL = URL(fileURLWithPath: decodedPath)
+                print("[RNEqualizer] 📂 URI recibida: \(uri)")
+                print("[RNEqualizer] 📂 Ruta decodificada: \(decodedPath)")
                 
+                // Verificar que el archivo existe
+                let fileManager = FileManager.default
+                if !fileManager.fileExists(atPath: decodedPath) {
+                    print("[RNEqualizer] ❌ Archivo no existe en: \(decodedPath)")
+                    reject("FILE_NOT_FOUND", "El archivo no existe en la ruta especificada", nil)
+                    return
+                }
+                
+                let fileURL = URL(fileURLWithPath: decodedPath)
                 print("[RNEqualizer] 📂 Cargando: \(fileURL.lastPathComponent)")
+                print("[RNEqualizer] 📂 Ruta completa: \(fileURL.path)")
                 
                 // Cargar archivo de audio
                 self.audioFile = try AVAudioFile(forReading: fileURL)
