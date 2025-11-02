@@ -73,6 +73,14 @@ const DownloadsScreen = () => {
   const downloadsByStatus = useSelector(selectDownloadsByStatus);
   const stats = useSelector(selectDownloadStats);
   
+  // DEBUG: Log para ver qué recibe la UI
+  console.log('[DownloadsScreen] 📊 UI recibe downloads:', {
+    completed: downloadsByStatus.completed.length,
+    downloading: downloadsByStatus.downloading.length,
+    pending: downloadsByStatus.pending.length,
+    completedTracks: downloadsByStatus.completed.map(d => d.track.title)
+  });
+  
   // Obtener el contexto del player
   const playerContext = usePlayerContext();
 
@@ -162,15 +170,19 @@ const DownloadsScreen = () => {
 
   // Obtener descargas filtradas
   const filteredDownloads = useMemo(() => {
+    let result;
     switch (filter) {
       case 'downloading':
-        return [...downloadsByStatus.downloading, ...downloadsByStatus.pending, ...downloadsByStatus.paused];
+        result = [...downloadsByStatus.downloading, ...downloadsByStatus.pending, ...downloadsByStatus.paused];
+        break;
       case 'completed':
-        return downloadsByStatus.completed;
+        result = downloadsByStatus.completed;
+        break;
       case 'error':
-        return downloadsByStatus.error;
+        result = downloadsByStatus.error;
+        break;
       default:
-        return [
+        result = [
           ...downloadsByStatus.downloading,
           ...downloadsByStatus.pending,
           ...downloadsByStatus.paused,
@@ -178,6 +190,14 @@ const DownloadsScreen = () => {
           ...downloadsByStatus.error,
         ];
     }
+    
+    console.log('[DownloadsScreen] 🎯 filteredDownloads calculado:', {
+      filter,
+      count: result.length,
+      tracks: result.map(d => d.track.title)
+    });
+    
+    return result;
   }, [filter, downloadsByStatus]);
 
   const handleExploreMusic = () => {

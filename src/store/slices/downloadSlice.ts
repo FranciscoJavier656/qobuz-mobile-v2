@@ -64,15 +64,21 @@ export const loadDownloads = createAsyncThunk(
   'download/loadDownloads',
   async () => {
     try {
+      console.log('[loadDownloads] 🔄 Iniciando carga desde AsyncStorage...');
       const downloadsJson = await AsyncStorage.getItem('downloads');
       const statsJson = await AsyncStorage.getItem('downloads_stats');
+      
+      console.log('[loadDownloads] 📦 downloadsJson length:', downloadsJson?.length || 0);
       
       if (downloadsJson) {
         const downloads = JSON.parse(downloadsJson);
         const stats = statsJson ? JSON.parse(statsJson) : initialState.stats;
+        console.log('[loadDownloads] ✅ Recibidas desde AsyncStorage:', downloads.length, 'downloads');
+        console.log('[loadDownloads] 📋 Tracks cargados:', downloads.map((d: DownloadItem) => d.track.title));
         return { downloads, stats };
       }
       
+      console.log('[loadDownloads] ⚠️ No hay descargas en AsyncStorage');
       return { downloads: [], stats: initialState.stats };
     } catch (error) {
       console.error('[downloadSlice] Error cargando descargas:', error);
@@ -97,16 +103,46 @@ export const saveDownloads = createAsyncThunk(
         error: state.download.downloads.filter(d => d.status === 'error').length,
       });
       
-      // Solo guardar descargas completadas para evitar inconsistencias
-      const completedDownloads = state.download.downloads.filter(d => d.status === 'completed');
+      // 🔧 FIX: Cargar descargas existentes desde AsyncStorage primero
+      let existingDownloads: DownloadItem[] = [];
+      try {
+        const downloadsJson = await AsyncStorage.getItem('downloads');
+        if (downloadsJson) {
+          existingDownloads = JSON.parse(downloadsJson);
+          console.log('[saveDownloads] 📥 Descargas existentes en AsyncStorage:', existingDownloads.length);
+          console.log('[saveDownloads] 📋 Tracks existentes:', existingDownloads.map(d => d.track.title));
+        }
+      } catch (error) {
+        console.error('[saveDownloads] ⚠️ Error cargando descargas existentes:', error);
+      }
       
-      console.log('[saveDownloads] 💾 Guardando', completedDownloads.length, 'descargas completadas');
-      console.log('[saveDownloads] 📋 Tracks a guardar:', completedDownloads.map(d => d.track.title));
+      // Solo tomar descargas completadas del estado actual
+      const newCompletedDownloads = state.download.downloads.filter(d => d.status === 'completed');
       
-      await AsyncStorage.setItem('downloads', JSON.stringify(completedDownloads));
+      // Combinar: usar Map para evitar duplicados (la clave es localPath o id)
+      const downloadsMap = new Map<string, DownloadItem>();
+      
+      // Agregar existentes primero
+      existingDownloads.forEach(d => {
+        const key = d.localPath || d.id;
+        downloadsMap.set(key, d);
+      });
+      
+      // Sobrescribir/agregar nuevos
+      newCompletedDownloads.forEach(d => {
+        const key = d.localPath || d.id;
+        downloadsMap.set(key, d);
+      });
+      
+      const mergedDownloads = Array.from(downloadsMap.values());
+      
+      console.log('[saveDownloads] 💾 Guardando', mergedDownloads.length, 'descargas completadas (merged)');
+      console.log('[saveDownloads] 📋 Tracks finales a guardar:', mergedDownloads.map(d => d.track.title));
+      
+      await AsyncStorage.setItem('downloads', JSON.stringify(mergedDownloads));
       await AsyncStorage.setItem('downloads_stats', JSON.stringify(state.download.stats));
       
-      console.log('[saveDownloads] ✅ Descargas guardadas en AsyncStorage:', completedDownloads.length, 'tracks');
+      console.log('[saveDownloads] ✅ Descargas guardadas en AsyncStorage:', mergedDownloads.length, 'tracks');
       return true;
     } catch (error) {
       console.error('[downloadSlice] ❌ Error guardando descargas:', error);
@@ -234,10 +270,16 @@ export const autoScanDownloads = createAsyncThunk(
       }
       
       // Recargar Redux si hay nuevos archivos
+      console.log('[autoScanDownloads] 🔄 Verificando si recargar Redux - syncedCount:', syncedCount);
       if (syncedCount > 0) {
+        console.log('[autoScanDownloads] 🔄 Recargando Redux con', existingDownloads.length, 'descargas...');
         await dispatch(loadDownloads());
+        console.log('[autoScanDownloads] ✅ Redux recargado');
+      } else {
+        console.log('[autoScanDownloads] ⏭️ No hay archivos nuevos, saltando recarga');
       }
       
+      console.log('[autoScanDownloads] 📊 Resumen final: Sincronizados:', syncedCount, '| Errores:', errorCount);
       return { syncedCount, errorCount };
     } catch (error) {
       console.error('[autoScanDownloads] Error en escaneo:', error);
@@ -334,9 +376,17 @@ const downloadSlice = createSlice({
       const { track, quality } = action.payload;
       const downloadId = `${track.id}_${Date.now()}`;
       
+      console.log('[addDownload] 🎯 ESTADO ANTES de agregar:');
+      console.log('[addDownload] 📊 Total downloads en estado:', state.downloads.length);
+      console.log('[addDownload] 📋 Tracks en estado:', state.downloads.map(d => d.track.title).slice(0, 5));
+      console.log('[addDownload] ➕ Agregando nuevo track:', track.title);
+      
       // Verificar si ya existe
       const exists = state.downloads.find(d => d.track.id === track.id);
-      if (exists) return;
+      if (exists) {
+        console.log('[addDownload] ⚠️ Track ya existe, saltando:', track.title);
+        return;
+      }
 
       const newDownload: DownloadItem = {
         id: downloadId,
@@ -353,6 +403,9 @@ const downloadSlice = createSlice({
 
       state.downloads.unshift(newDownload);
       state.queue.push(downloadId);
+      
+      console.log('[addDownload] ✅ ESTADO DESPUÉS de agregar:');
+      console.log('[addDownload] 📊 Total downloads en estado:', state.downloads.length);
     },
 
     removeDownload(state, action: PayloadAction<string>) {
@@ -514,15 +567,30 @@ const downloadSlice = createSlice({
         
         const { downloads, stats } = action.payload;
         console.log('[downloadSlice] 🔵 Recibidas desde AsyncStorage:', downloads.length, 'downloads');
+        console.log('[downloadSlice] 🔵 TODAS las tracks:', downloads.map((d: DownloadItem) => d.track.title));
+        console.log('[downloadSlice] 🔵 Por status:', {
+          completed: downloads.filter((d: DownloadItem) => d.status === 'completed').length,
+          downloading: downloads.filter((d: DownloadItem) => d.status === 'downloading').length,
+          pending: downloads.filter((d: DownloadItem) => d.status === 'pending').length
+        });
         
-        // REEMPLAZAR completamente con las descargas de AsyncStorage
-        // Las descargas completadas están en AsyncStorage y son la fuente de verdad
-        state.downloads = downloads;
+        // 🔧 FIX: Preservar downloads activos (pending, downloading, paused, error)
+        // Solo reemplazar los completados con los de AsyncStorage
+        const activeDownloads = state.downloads.filter((d: DownloadItem) => 
+          d.status !== 'completed'
+        );
+        
+        console.log('[downloadSlice] 🔵 Preservando downloads activos:', activeDownloads.length);
+        console.log('[downloadSlice] 🔵 Active tracks:', activeDownloads.map((d: DownloadItem) => `${d.track.title} (${d.status})`));
+        
+        // Combinar: downloads completados de AsyncStorage + downloads activos de Redux
+        state.downloads = [...downloads, ...activeDownloads];
         state.stats = stats;
         
         console.log('[downloadSlice] 🔵 Estado DESPUÉS de actualizar:', {
           downloadsLength: state.downloads.length,
-          tracks: state.downloads.map(d => d.track.title).slice(0, 3)
+          completedCount: state.downloads.filter((d: DownloadItem) => d.status === 'completed').length,
+          tracks: state.downloads.map((d: DownloadItem) => `${d.track.title} (${d.status})`).slice(0, 5)
         });
         console.log('[downloadSlice] ✅ Estado de descargas restaurado - Total en estado:', state.downloads.length);
         console.log('[downloadSlice] 🔵 ==================== FIN loadDownloads.fulfilled ====================');
