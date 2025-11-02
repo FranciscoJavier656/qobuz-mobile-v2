@@ -310,58 +310,62 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
         />
       </Animated.View>
 
-      {/* Contenedor principal con efecto "genie" DRAMÁTICO */}
+      {/* Contenedor principal con efecto "genie" - SIN escala que distorsione */}
       <Animated.View 
         style={[
           styles.container,
           {
             opacity: opacityAnim,
             transform: [
-              // Traslación vertical - se mueve desde abajo
+              // Solo traslación vertical - sin escala para evitar cortes
               {
                 translateY: translateYAnim,
               },
-              // Escala vertical - se estira dramáticamente
-              {
-                scaleY: scaleYAnim,
-              },
-              // Escala horizontal - expansión dramática con distorsión
-              {
-                scaleX: scaleXAnim,
-              },
-              // Perspectiva 3D pronunciada
+              // Perspectiva 3D
               {
                 perspective: 1500,
               },
-              // Rotación en X para efecto de profundidad
+              // Rotación en X para efecto de profundidad (sin afectar el tamaño)
               {
                 rotateX: phase1.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['60deg', '20deg'], // Rotación pronunciada al inicio
+                  outputRange: ['45deg', '15deg'],
                 }),
               },
-              // Rotación adicional que se va reduciendo
               {
                 rotateX: phase2.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['20deg', '5deg'],
+                  outputRange: ['15deg', '3deg'],
                 }),
               },
-              // Rotación final de ajuste
               {
                 rotateX: phase3.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['5deg', '0deg'],
+                  outputRange: ['3deg', '0deg'],
                 }),
               },
             ],
           }
         ]}
       >
-        <LinearGradient
-          colors={['#0a0a0a', '#1a1a2e', '#16213e']}
-          style={styles.gradient}
+        <Animated.View
+          style={{
+            flex: 1,
+            transform: [
+              // Escala SOLO en el contenido interno, no en el contenedor principal
+              {
+                scaleY: scaleYAnim,
+              },
+              {
+                scaleX: scaleXAnim,
+              },
+            ],
+          }}
         >
+          <LinearGradient
+            colors={['#0a0a0a', '#1a1a2e', '#16213e']}
+            style={styles.gradient}
+          >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
@@ -501,6 +505,7 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
             </Text>
           </View>
         </LinearGradient>
+        </Animated.View>
       </Animated.View>
     </Modal>
   );
@@ -512,11 +517,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
   },
   container: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     backgroundColor: 'rgba(0,0,0,0.95)',
   },
   gradient: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
