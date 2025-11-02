@@ -16,6 +16,7 @@ interface LibraryState {
   artists: Artist[];
   playlists: Playlist[];
   recentlyPlayed: Track[];
+  isLoaded: boolean;
 }
 
 const initialState: LibraryState = {
@@ -24,6 +25,7 @@ const initialState: LibraryState = {
   artists: [],
   playlists: [],
   recentlyPlayed: [],
+  isLoaded: false,
 };
 
 // Thunk para cargar la biblioteca desde AsyncStorage
@@ -31,18 +33,20 @@ export const loadLibrary = createAsyncThunk(
   'library/loadLibrary',
   async () => {
     try {
-      const [albumsJson, artistsJson] = await Promise.all([
+      const [albumsJson, artistsJson, playlistsJson] = await Promise.all([
         AsyncStorage.getItem('@qobuz_library_albums'),
         AsyncStorage.getItem('@qobuz_library_artists'),
+        AsyncStorage.getItem('@qobuz_library_playlists'),
       ]);
       
       return {
         albums: albumsJson ? JSON.parse(albumsJson) : [],
         artists: artistsJson ? JSON.parse(artistsJson) : [],
+        playlists: playlistsJson ? JSON.parse(playlistsJson) : [],
       };
     } catch (error) {
       console.error('[LibrarySlice] Error loading library:', error);
-      return { albums: [], artists: [] };
+      return { albums: [], artists: [], playlists: [] };
     }
   }
 );
@@ -59,6 +63,19 @@ export const saveLibrary = createAsyncThunk(
       console.log('[LibrarySlice] ✅ Biblioteca guardada en AsyncStorage');
     } catch (error) {
       console.error('[LibrarySlice] Error saving library:', error);
+    }
+  }
+);
+
+// Thunk para guardar playlists en AsyncStorage
+export const savePlaylists = createAsyncThunk(
+  'library/savePlaylists',
+  async (playlists: Playlist[]) => {
+    try {
+      await AsyncStorage.setItem('@qobuz_library_playlists', JSON.stringify(playlists));
+      console.log('[LibrarySlice] ✅ Playlists guardadas en AsyncStorage:', playlists.length);
+    } catch (error) {
+      console.error('[LibrarySlice] Error saving playlists:', error);
     }
   }
 );
@@ -155,19 +172,26 @@ export const fetchArtistInfo = createAsyncThunk(
 export const processExistingDownloads = createAsyncThunk(
   'library/processExistingDownloads',
   async (_, { dispatch, getState }) => {
-    console.log('[LibrarySlice] 🔄 Reprocesando descargas existentes...');
     const state = getState() as any;
-    const downloads = state.download?.downloads ?? [];
-    const favorites = state.favorites?.tracks ?? [];
     const authToken = state.auth?.token;
     
-    // Filtrar solo descargas completadas
-    const completedDownloads = downloads.filter((d: any) => d.status === 'completed');
-    console.log('[LibrarySlice] 📥 Descargas completadas encontradas:', completedDownloads.length);
+    // BYPASS: Leer descargas directamente desde AsyncStorage
+    let downloads: any[] = [];
+    try {
+      const downloadsJson = await AsyncStorage.getItem('downloads');
+      if (downloadsJson) {
+        downloads = JSON.parse(downloadsJson);
+      }
+    } catch (error) {
+      console.error('[LibrarySlice] Error cargando descargas:', error);
+    }
     
-    // Filtrar favoritos locales (tracks descargadas marcadas como favoritas)
+    // Leer favoritos desde Redux
+    const favorites = state.favorites?.tracks ?? [];
+    
+    // Filtrar descargas completadas y favoritos locales
+    const completedDownloads = downloads.filter((d: any) => d.status === 'completed');
     const localFavorites = favorites.filter((f: any) => f.favoriteSource === 'local');
-    console.log('[LibrarySlice] 📥 Favoritos locales encontrados:', localFavorites.length);
     
     // Combinar ambas fuentes de tracks descargadas
     const allLocalTracks: any[] = [];
@@ -177,36 +201,31 @@ export const processExistingDownloads = createAsyncThunk(
       if (d.track) allLocalTracks.push(d.track);
     });
     
-    // Agregar favoritos locales (que son tracks descargadas)
+    // Agregar favoritos locales (evitar duplicados)
     localFavorites.forEach((f: any) => {
-      // Solo agregar si no está ya en la lista (evitar duplicados)
       if (!allLocalTracks.find(t => t.id === f.id)) {
         allLocalTracks.push(f);
       }
     });
     
-    console.log('[LibrarySlice] 📊 Total de tracks locales a procesar:', allLocalTracks.length);
+    console.log('[LibrarySlice] 📊 Procesando', allLocalTracks.length, 'tracks locales');
     
-    // Si hay tracks, limpiar la biblioteca primero para reprocesar todo
+    // Limpiar biblioteca antes de reprocesar
     if (allLocalTracks.length > 0) {
-      console.log('[LibrarySlice] 🧹 Limpiando biblioteca antes de reprocesar...');
       dispatch(librarySlice.actions.clearLibrary());
     }
     
     // Procesar cada track
     for (const track of allLocalTracks) {
-      console.log('[LibrarySlice] ⚙️ Procesando track:', track.title);
       dispatch(librarySlice.actions.addMetadataFromTrack(track));
       
-      // Si el track tiene performer con ID y tenemos auth token, obtener info completa del artista
+      // Obtener info completa del artista si es posible
       if (track.performer?.id && authToken) {
-        console.log('[LibrarySlice] 🌐 Solicitando info del artista para reproceso, ID:', track.performer.id);
         const artistInfo = await dispatch(fetchArtistInfo({
           artistId: track.performer.id,
           authToken: authToken,
         }));
         
-        // Si obtuvimos la info, actualizar el artista con la imagen real usando el reducer
         if (artistInfo.payload && (artistInfo.payload as any).picture) {
           dispatch(librarySlice.actions.updateArtistPicture({
             artistName: track.performer?.name || '',
@@ -223,8 +242,7 @@ export const processExistingDownloads = createAsyncThunk(
       artists: updatedState.library.artists,
     }));
     
-    console.log('[LibrarySlice] ✅ Reprocesamiento completado');
-    console.log('[LibrarySlice] 📊 Total: Albums:', updatedState.library.albums.length, 'Artists:', updatedState.library.artists.length);
+    console.log('[LibrarySlice] ✅ Biblioteca sincronizada:', updatedState.library.albums.length, 'álbumes,', updatedState.library.artists.length, 'artistas');
   }
 );
 
@@ -283,9 +301,13 @@ const librarySlice = createSlice({
         createdAt: Date.now(),
       };
       state.playlists.unshift(newPlaylist);
+      // Guardar automáticamente
+      AsyncStorage.setItem('@qobuz_library_playlists', JSON.stringify(state.playlists));
     },
     deletePlaylist: (state, action: PayloadAction<string>) => {
       state.playlists = state.playlists.filter(p => p.id !== action.payload);
+      // Guardar automáticamente
+      AsyncStorage.setItem('@qobuz_library_playlists', JSON.stringify(state.playlists));
     },
     addTrackToPlaylist: (state, action: PayloadAction<{ playlistId: string; track: Track }>) => {
       const playlist = state.playlists.find(p => p.id === action.payload.playlistId);
@@ -293,6 +315,8 @@ const librarySlice = createSlice({
         const exists = playlist.tracks.find(t => t.id === action.payload.track.id);
         if (!exists) {
           playlist.tracks.push(action.payload.track);
+          // Guardar automáticamente
+          AsyncStorage.setItem('@qobuz_library_playlists', JSON.stringify(state.playlists));
         }
       }
     },
@@ -300,6 +324,8 @@ const librarySlice = createSlice({
       const playlist = state.playlists.find(p => p.id === action.payload.playlistId);
       if (playlist) {
         playlist.tracks = playlist.tracks.filter(t => t.id !== action.payload.trackId);
+        // Guardar automáticamente
+        AsyncStorage.setItem('@qobuz_library_playlists', JSON.stringify(state.playlists));
       }
     },
     setPlaylists: (state, action: PayloadAction<Playlist[]>) => {
@@ -321,12 +347,12 @@ const librarySlice = createSlice({
       state.recentlyPlayed = action.payload;
     },
 
-    // Clear all
+    // Clear all (pero mantiene playlists - las playlists son creadas manualmente por el usuario)
     clearLibrary: (state) => {
       state.favorites = [];
       state.albums = [];
       state.artists = [];
-      state.playlists = [];
+      // state.playlists = []; // ← NO borrar playlists, son independientes de la sincronización
       state.recentlyPlayed = [];
     },
 
@@ -419,8 +445,10 @@ const librarySlice = createSlice({
       .addCase(loadLibrary.fulfilled, (state, action) => {
         state.albums = action.payload.albums;
         state.artists = action.payload.artists;
+        state.playlists = action.payload.playlists;
+        state.isLoaded = true;
         console.log('[LibrarySlice] ✅ Biblioteca cargada desde AsyncStorage');
-        console.log('[LibrarySlice] 📊 Albums:', state.albums.length, 'Artists:', state.artists.length);
+        console.log('[LibrarySlice] 📊 Albums:', state.albums.length, 'Artists:', state.artists.length, 'Playlists:', state.playlists.length);
       });
   },
 });

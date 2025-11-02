@@ -16,8 +16,11 @@ import { BlurView } from 'expo-blur';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 import type { RootState } from '../store';
 import type { Track } from '../services/qobuz/types';
+import { usePlayerContext } from '../contexts/PlayerContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -34,10 +37,26 @@ const ArtistDetailScreen = () => {
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
   const [scrollY] = useState(new Animated.Value(0));
 
-  // Obtener tracks descargadas del artista
+  // Usar PlayerContext para reproducción (incluyendo el sound compartido)
+  const { 
+    currentTrack, 
+    isPlaying,
+    sound,
+    setCurrentTrack,
+    setIsPlaying,
+    setSound,
+    setMiniPlayerVisible,
+    setIsLocalFile,
+    queue,
+    setQueue,
+    currentIndex,
+    setCurrentIndex,
+    repeatMode,
+  } = usePlayerContext();
+
+  // Obtener tracks descargadas del artista (desde Redux)
   const downloads = useSelector((state: RootState) => state.download.downloads);
   const albums = useSelector((state: RootState) => state.library.albums);
 
@@ -45,16 +64,71 @@ const ArtistDetailScreen = () => {
     loadArtistTracks();
   }, [artistId]);
 
-  const loadArtistTracks = () => {
+  // Limpiar sound cuando el componente se desmonte
+  useEffect(() => {
+    return () => {
+      // No limpiar el sound aquí porque es compartido en el contexto
+      // El MiniPlayerWrapper se encarga de la limpieza cuando se cierra
+    };
+  }, []);
+
+  // useEffect para detectar cambios en currentIndex (desde FullPlayer botones next/prev)
+  useEffect(() => {
+    // Solo ejecutar si hay una cola y el índice cambió externamente
+    if (queue.length > 0 && currentIndex >= 0 && currentIndex < queue.length && tracks.length > 0) {
+      const trackToPlay = queue[currentIndex];
+      
+      // Solo reproducir si el track cambió (para evitar loops)
+      if (currentTrack?.id !== trackToPlay.id) {
+        console.log('[ArtistDetailScreen] 🎵 currentIndex cambió desde FullPlayer, reproduciendo:', trackToPlay.title, `(${currentIndex + 1}/${queue.length})`);
+        handlePlayTrack(trackToPlay.id.toString());
+      }
+    }
+  }, [currentIndex, queue]); // Solo observar currentIndex y queue
+
+  const loadArtistTracks = async () => {
     setLoading(true);
     
+    // BYPASS: Intentar leer desde AsyncStorage si Redux está vacío
+    let downloadsToUse = downloads;
+    
+    if (downloads.length === 0) {
+      try {
+        const downloadsJson = await AsyncStorage.getItem('downloads');
+        if (downloadsJson) {
+          downloadsToUse = JSON.parse(downloadsJson);
+          console.log('[ArtistDetailScreen] BYPASS: Usando', downloadsToUse.length, 'descargas de AsyncStorage');
+        }
+      } catch (error) {
+        console.error('[ArtistDetailScreen] Error cargando descargas:', error);
+      }
+    }
+    
+    // Debug: Ver performers de todas las descargas
+    console.log('[ArtistDetailScreen] Buscando artista:', { artistId, artistName });
+    console.log('[ArtistDetailScreen] Performers únicos:', 
+      [...new Set(downloadsToUse
+        .filter(d => d.status === 'completed')
+        .map(d => `${d.track.performer?.name} (ID: ${d.track.performer?.id})`)
+      )]
+    );
+    
     // Filtrar tracks de este artista desde las descargas
-    const artistTracks = downloads
-      .filter(download => 
-        download.status === 'completed' && 
-        download.track.performer?.id?.toString() === artistId
-      )
+    // Intentar comparar tanto por ID como por nombre (case-insensitive)
+    const artistTracks = downloadsToUse
+      .filter(download => {
+        if (download.status !== 'completed') return false;
+        
+        const performerId = download.track.performer?.id?.toString();
+        const performerName = download.track.performer?.name?.toLowerCase();
+        const searchName = artistName?.toLowerCase();
+        
+        // Comparar por ID o por nombre
+        return performerId === artistId || performerName === searchName;
+      })
       .map(download => download.track);
+    
+    console.log('[ArtistDetailScreen] Tracks encontradas para', artistName, ':', artistTracks.length);
 
     // Ordenar por álbum y track number
     const sortedTracks = artistTracks.sort((a, b) => {
@@ -69,20 +143,365 @@ const ArtistDetailScreen = () => {
     setLoading(false);
   };
 
-  const handlePlayTrack = (trackId: string) => {
-    if (currentPlayingId === trackId) {
-      setCurrentPlayingId(null);
-    } else {
-      setCurrentPlayingId(trackId);
-      // Aquí integrarás con tu reproductor actual
-      console.log('Playing track:', trackId);
+  const handlePlayTrack = async (trackId: string) => {
+    const track = tracks.find(t => t.id.toString() === trackId);
+    if (!track) return;
+
+    // Si es la misma track, toggle play/pause
+    if (currentTrack && currentTrack.id.toString() === trackId) {
+      if (sound) {
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          if (isPlaying) {
+            await sound.pauseAsync();
+            setIsPlaying(false);
+          } else {
+            await sound.playAsync();
+            setIsPlaying(true);
+          }
+        }
+      }
+      return;
+    }
+
+    // Detener sonido anterior si existe
+    if (sound) {
+      try {
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        }
+      } catch (error) {
+        // Ignorar errores al detener sonido (común si ya está interrumpido)
+        console.log('[ArtistDetailScreen] Sound ya fue detenido o está en estado inválido');
+      }
+      setSound(null);
+    }
+
+    // Buscar la descarga correspondiente para obtener el localPath
+    let downloadsToUse = downloads;
+    if (downloads.length === 0) {
+      try {
+        const downloadsJson = await AsyncStorage.getItem('downloads');
+        if (downloadsJson) {
+          downloadsToUse = JSON.parse(downloadsJson);
+        }
+      } catch (error) {
+        console.error('[ArtistDetailScreen] Error cargando descargas:', error);
+      }
+    }
+
+    const download = downloadsToUse.find(d => d.track.id.toString() === trackId);
+    if (!download || !download.localPath) {
+      console.error('[ArtistDetailScreen] No se encontró localPath para track:', trackId);
+      return;
+    }
+
+    try {
+      // Configurar audio
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+      });
+
+      // Crear y reproducir el sonido
+      const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
+        { uri: download.localPath },
+        { shouldPlay: true }
+      );
+
+      // Configurar callback para actualizaciones de estado
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          setIsPlaying(status.isPlaying);
+          
+          // Si la canción terminó, reproducir la siguiente en la cola
+          if (status.didJustFinish) {
+            console.log('[ArtistDetailScreen] 🎵 Track terminó, reproduciendo siguiente...');
+            setIsPlaying(false);
+            playNextInQueue();
+          }
+        }
+      });
+
+      setSound(newSound);
+      setCurrentTrack(track);
+      setMiniPlayerVisible(true);
+      setIsLocalFile(true);
+      
+      // Establecer isPlaying basado en el estado inicial real del sound
+      if (initialStatus.isLoaded) {
+        setIsPlaying(initialStatus.isPlaying);
+      }
+      
+      // Verificar el estado después de un breve momento para asegurar sincronización
+      setTimeout(async () => {
+        try {
+          const currentStatus = await newSound.getStatusAsync();
+          if (currentStatus.isLoaded && currentStatus.isPlaying) {
+            setIsPlaying(true);
+            console.log('[ArtistDetailScreen] ✅ Estado actualizado a playing después de verificación');
+          }
+        } catch (e) {
+          console.log('[ArtistDetailScreen] Error verificando estado:', e);
+        }
+      }, 200);
+
+      console.log('[ArtistDetailScreen] ✅ Reproduciendo:', track.title);
+    } catch (error) {
+      console.error('[ArtistDetailScreen] Error reproduciendo:', error);
     }
   };
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      setCurrentPlayingId(tracks[0].id.toString());
-      console.log('Playing all tracks starting from:', tracks[0].title);
+      console.log('[ArtistDetailScreen] 🎵 Reproduciendo todas las tracks del artista:', tracks.length, 'tracks');
+      setQueue(tracks);
+      setCurrentIndex(0);
+      handlePlayTrack(tracks[0].id.toString());
+    }
+  };
+
+  // Función para reproducir la siguiente canción en la cola
+  const playNextInQueue = async () => {
+    try {
+      console.log('[ArtistDetailScreen] 🎵 playNextInQueue called');
+      console.log('[ArtistDetailScreen] 🎵 Current queue length:', queue.length);
+      console.log('[ArtistDetailScreen] 🎵 Current index:', currentIndex);
+      console.log('[ArtistDetailScreen] 🔁 Repeat mode:', repeatMode);
+      
+      // Si repeatMode es 'one', repetir la misma canción
+      if (repeatMode === 'one' && currentTrack) {
+        console.log('[ArtistDetailScreen] 🔁 Repitiendo canción actual');
+        const trackToPlay = currentTrack;
+        
+        // Detener sonido anterior
+        if (sound) {
+          try {
+            const status = await sound.getStatusAsync();
+            if (status.isLoaded) {
+              await sound.stopAsync();
+              await sound.unloadAsync();
+            }
+          } catch (error) {
+            console.log('[ArtistDetailScreen] Sound ya detenido');
+          }
+          setSound(null);
+        }
+        
+        // Buscar localPath
+        let localPath = trackToPlay.localPath || trackToPlay.local_file_uri;
+        if (!localPath) {
+          const downloadsJson = await AsyncStorage.getItem('downloads');
+          if (downloadsJson) {
+            const downloads = JSON.parse(downloadsJson);
+            const download = downloads.find((d: any) => d.track.id === trackToPlay.id);
+            if (download?.localPath) {
+              localPath = download.localPath;
+            }
+          }
+        }
+        
+        if (localPath) {
+          const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
+            { uri: localPath },
+            { shouldPlay: true }
+          );
+          
+          newSound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded) {
+              setIsPlaying(status.isPlaying);
+              if (status.didJustFinish) {
+                console.log('[ArtistDetailScreen] 🎵 Track terminó, reproduciendo siguiente...');
+                setIsPlaying(false);
+                playNextInQueue();
+              }
+            }
+          });
+          
+          setSound(newSound);
+          
+          if (initialStatus.isLoaded) {
+            setIsPlaying(initialStatus.isPlaying);
+          }
+          
+          setTimeout(async () => {
+            try {
+              const currentStatus = await newSound.getStatusAsync();
+              if (currentStatus.isLoaded && currentStatus.isPlaying) {
+                setIsPlaying(true);
+              }
+            } catch (e) {
+              console.log('[ArtistDetailScreen] Error verificando estado:', e);
+            }
+          }, 200);
+        }
+        return;
+      }
+      
+      if (currentIndex < queue.length - 1) {
+        const nextIndex = currentIndex + 1;
+        let nextTrack = queue[nextIndex];
+        
+        console.log('[ArtistDetailScreen] 🎵 Playing next track:', nextTrack.title, `(${nextIndex + 1}/${queue.length})`);
+        
+        // Detener sonido anterior
+        if (sound) {
+          try {
+            const status = await sound.getStatusAsync();
+            if (status.isLoaded) {
+              await sound.stopAsync();
+              await sound.unloadAsync();
+            }
+          } catch (error) {
+            console.log('[ArtistDetailScreen] Sound ya detenido');
+          }
+          setSound(null);
+        }
+        
+        // Buscar localPath
+        let localPath = nextTrack.localPath || nextTrack.local_file_uri;
+        if (!localPath) {
+          const downloadsJson = await AsyncStorage.getItem('downloads');
+          if (downloadsJson) {
+            const downloads = JSON.parse(downloadsJson);
+            const download = downloads.find((d: any) => d.track.id === nextTrack.id);
+            if (download?.localPath) {
+              localPath = download.localPath;
+              nextTrack = { ...nextTrack, localPath, local_file_uri: localPath };
+            }
+          }
+        }
+        
+        if (!localPath) {
+          console.log('[ArtistDetailScreen] ❌ No localPath, saltando');
+          setCurrentIndex(nextIndex + 1);
+          await playNextInQueue();
+          return;
+        }
+        
+        setCurrentIndex(nextIndex);
+        setCurrentTrack(nextTrack);
+        
+        // Crear y reproducir
+        const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
+          { uri: localPath },
+          { shouldPlay: true }
+        );
+        
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded) {
+            setIsPlaying(status.isPlaying);
+            if (status.didJustFinish) {
+              console.log('[ArtistDetailScreen] 🎵 Track terminó, reproduciendo siguiente...');
+              setIsPlaying(false);
+              playNextInQueue();
+            }
+          }
+        });
+        
+        setSound(newSound);
+        
+        if (initialStatus.isLoaded) {
+          setIsPlaying(initialStatus.isPlaying);
+        }
+        
+        setTimeout(async () => {
+          try {
+            const currentStatus = await newSound.getStatusAsync();
+            if (currentStatus.isLoaded && currentStatus.isPlaying) {
+              setIsPlaying(true);
+            }
+          } catch (e) {
+            console.log('[ArtistDetailScreen] Error verificando estado:', e);
+          }
+        }, 200);
+        
+      } else if (repeatMode === 'all' && queue.length > 0) {
+        console.log('[ArtistDetailScreen] 🔁 Repeat all: volviendo al inicio');
+        
+        let firstTrack = queue[0];
+        
+        // Detener sonido anterior
+        if (sound) {
+          try {
+            const status = await sound.getStatusAsync();
+            if (status.isLoaded) {
+              await sound.stopAsync();
+              await sound.unloadAsync();
+            }
+          } catch (error) {
+            console.log('[ArtistDetailScreen] Sound ya detenido');
+          }
+          setSound(null);
+        }
+        
+        // Buscar localPath
+        let localPath = firstTrack.localPath || firstTrack.local_file_uri;
+        if (!localPath) {
+          const downloadsJson = await AsyncStorage.getItem('downloads');
+          if (downloadsJson) {
+            const downloads = JSON.parse(downloadsJson);
+            const download = downloads.find((d: any) => d.track.id === firstTrack.id);
+            if (download?.localPath) {
+              localPath = download.localPath;
+              firstTrack = { ...firstTrack, localPath, local_file_uri: localPath };
+            }
+          }
+        }
+        
+        if (!localPath) {
+          console.log('[ArtistDetailScreen] ❌ No localPath para primer track');
+          setIsPlaying(false);
+          return;
+        }
+        
+        setCurrentIndex(0);
+        setCurrentTrack(firstTrack);
+        
+        // Crear y reproducir
+        const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
+          { uri: localPath },
+          { shouldPlay: true }
+        );
+        
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded) {
+            setIsPlaying(status.isPlaying);
+            if (status.didJustFinish) {
+              console.log('[ArtistDetailScreen] 🎵 Track terminó, reproduciendo siguiente...');
+              setIsPlaying(false);
+              playNextInQueue();
+            }
+          }
+        });
+        
+        setSound(newSound);
+        
+        if (initialStatus.isLoaded) {
+          setIsPlaying(initialStatus.isPlaying);
+        }
+        
+        setTimeout(async () => {
+          try {
+            const currentStatus = await newSound.getStatusAsync();
+            if (currentStatus.isLoaded && currentStatus.isPlaying) {
+              setIsPlaying(true);
+            }
+          } catch (e) {
+            console.log('[ArtistDetailScreen] Error verificando estado:', e);
+          }
+        }, 200);
+        
+      } else {
+        console.log('[ArtistDetailScreen] 🎵 Queue finished');
+        setIsPlaying(false);
+      }
+    } catch (error) {
+      console.error('[ArtistDetailScreen] ❌ Error in playNextInQueue:', error);
+      setIsPlaying(false);
     }
   };
 
@@ -111,7 +530,7 @@ const ArtistDetailScreen = () => {
   });
 
   const renderTrackItem = ({ item, index }: { item: Track; index: number }) => {
-    const isPlaying = currentPlayingId === item.id.toString();
+    const isCurrentlyPlaying = currentTrack && currentTrack.id.toString() === item.id.toString() && isPlaying;
     const isFirstOfAlbum = index === 0 || item.album?.title !== tracks[index - 1]?.album?.title;
 
     return (
@@ -136,20 +555,20 @@ const ArtistDetailScreen = () => {
         )}
         
         <TouchableOpacity
-          style={[styles.trackItem, isPlaying && styles.trackItemPlaying]}
+          style={[styles.trackItem, isCurrentlyPlaying && styles.trackItemPlaying]}
           onPress={() => handlePlayTrack(item.id.toString())}
           activeOpacity={0.7}
         >
           <View style={styles.trackLeft}>
             <View style={styles.trackNumberContainer}>
-              {isPlaying ? (
+              {isCurrentlyPlaying ? (
                 <MaterialIcons name="equalizer" size={20} color="#1DB954" />
               ) : (
                 <Text style={styles.trackNumber}>{item.track_number || index + 1}</Text>
               )}
             </View>
             <View style={styles.trackInfo}>
-              <Text style={[styles.trackTitle, isPlaying && styles.trackTitlePlaying]} numberOfLines={1}>
+              <Text style={[styles.trackTitle, isCurrentlyPlaying && styles.trackTitlePlaying]} numberOfLines={1}>
                 {item.title}
               </Text>
               <Text style={styles.trackDuration}>
@@ -163,9 +582,9 @@ const ArtistDetailScreen = () => {
             onPress={() => handlePlayTrack(item.id.toString())}
           >
             <MaterialIcons
-              name={isPlaying ? 'pause' : 'play-arrow'}
+              name={isCurrentlyPlaying ? 'pause' : 'play-arrow'}
               size={24}
-              color={isPlaying ? '#1DB954' : '#fff'}
+              color={isCurrentlyPlaying ? '#1DB954' : '#fff'}
             />
           </TouchableOpacity>
         </TouchableOpacity>
@@ -390,7 +809,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   trackList: {
-    paddingBottom: 100,
+    paddingBottom: 160,
   },
   albumHeader: {
     flexDirection: 'row',

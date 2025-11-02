@@ -31,6 +31,16 @@ interface PlayerContextType {
   setMiniPlayerVisible: (visible: boolean) => void;
   isLocalFile: boolean;
   setIsLocalFile: (isLocal: boolean) => void;
+  queue: Track[];
+  setQueue: (queue: Track[]) => void;
+  currentIndex: number;
+  setCurrentIndex: (index: number) => void;
+  playNext: () => void;
+  playPrevious: () => void;
+  isShuffleEnabled: boolean;
+  setIsShuffleEnabled: (enabled: boolean) => void;
+  repeatMode: 'off' | 'all' | 'one';
+  setRepeatMode: (mode: 'off' | 'all' | 'one') => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -42,6 +52,28 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [miniPlayerVisible, setMiniPlayerVisible] = useState(false);
   const [isLocalFile, setIsLocalFile] = useState(false);
+  const [queue, setQueue] = useState<Track[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isShuffleEnabled, setIsShuffleEnabled] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
+
+  const playNext = () => {
+    if (currentIndex < queue.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else if (repeatMode === 'all' && queue.length > 0) {
+      // Si repeat all está activado, volver al inicio
+      setCurrentIndex(0);
+    }
+  };
+
+  const playPrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    } else if (repeatMode === 'all' && queue.length > 0) {
+      // Si repeat all está activado, ir al final
+      setCurrentIndex(queue.length - 1);
+    }
+  };
 
   return (
     <PlayerContext.Provider value={{ 
@@ -57,6 +89,16 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setMiniPlayerVisible,
       isLocalFile,
       setIsLocalFile,
+      queue,
+      setQueue,
+      currentIndex,
+      setCurrentIndex,
+      playNext,
+      playPrevious,
+      isShuffleEnabled,
+      setIsShuffleEnabled,
+      repeatMode,
+      setRepeatMode,
     }}>
       {children}
     </PlayerContext.Provider>

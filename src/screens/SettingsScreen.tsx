@@ -17,8 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 // Store
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
-import { updateSettings } from '../store/slices/downloadSlice';
-import { addToFavorites } from '../store/slices/favoritesSlice';
+import { updateSettings, addSyncedDownload, saveDownloads } from '../store/slices/downloadSlice';
 import { QobuzAPI } from '../services/qobuz/QobuzAPI';
 
 const QUALITY_OPTIONS = [
@@ -122,7 +121,7 @@ const SettingsScreen = () => {
 
     Alert.alert(
       'Sincronizar Descargas',
-      '¿Deseas sincronizar los archivos descargados con la biblioteca? Esto buscará los metadatos en Qobuz.',
+      '¿Deseas sincronizar los archivos descargados con la biblioteca? Esto buscará los metadatos en Qobuz y los agregará a tus descargas.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -177,10 +176,19 @@ const SettingsScreen = () => {
                     const track = searchResults[0];
                     const filePath = `${downloadsDir}${filename}`;
                     
+                    // Determinar calidad basado en extensión
+                    const extension = filename.toLowerCase().endsWith('.mp3') ? 'mp3' : 'flac';
+                    const quality = extension === 'mp3' ? '5' : '27'; // MP3 320kbps o FLAC Studio
+                    
                     console.log('[SettingsScreen] ✅ Track encontrado:', track.title, 'by', track.performer?.name);
                     
-                    // Agregar a favoritos locales
-                    dispatch(addToFavorites(track, 'local') as any);
+                    // Agregar como descarga completada
+                    await dispatch(addSyncedDownload({
+                      track,
+                      localPath: filePath,
+                      quality
+                    }) as any);
+                    
                     syncedCount++;
                   } else {
                     console.log('[SettingsScreen] ❌ No se encontró en Qobuz:', searchQuery);
@@ -192,9 +200,12 @@ const SettingsScreen = () => {
                 }
               }
               
+              // Guardar descargas en AsyncStorage
+              await dispatch(saveDownloads() as any);
+              
               Alert.alert(
                 'Sincronización Completa',
-                `✅ Sincronizados: ${syncedCount}\n❌ Errores: ${errorCount}\n\nLos tracks sincronizados ahora aparecerán en tu biblioteca.`,
+                `✅ Sincronizados: ${syncedCount}\n❌ Errores: ${errorCount}\n\nLos tracks sincronizados ahora aparecen en "Descargas". Puedes agregarlos a favoritos manualmente si lo deseas.`,
                 [{ text: 'OK' }]
               );
               

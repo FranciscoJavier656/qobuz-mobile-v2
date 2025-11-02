@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { Track } from '../../services/qobuz/types';
 import { DownloadManager } from '../../services/DownloadManager';
 
@@ -63,22 +64,18 @@ export const loadDownloads = createAsyncThunk(
   'download/loadDownloads',
   async () => {
     try {
-      console.log('[downloadSlice] 📂 Cargando descargas desde AsyncStorage...');
       const downloadsJson = await AsyncStorage.getItem('downloads');
       const statsJson = await AsyncStorage.getItem('downloads_stats');
       
       if (downloadsJson) {
         const downloads = JSON.parse(downloadsJson);
         const stats = statsJson ? JSON.parse(statsJson) : initialState.stats;
-        console.log('[downloadSlice] ✅ Descargas cargadas:', downloads.length, 'tracks');
-        console.log('[downloadSlice] 📊 Stats:', stats);
         return { downloads, stats };
       }
       
-      console.log('[downloadSlice] ℹ️ No hay descargas guardadas');
       return { downloads: [], stats: initialState.stats };
     } catch (error) {
-      console.error('[downloadSlice] ❌ Error cargando descargas:', error);
+      console.error('[downloadSlice] Error cargando descargas:', error);
       return { downloads: [], stats: initialState.stats };
     }
   }
@@ -90,6 +87,15 @@ export const saveDownloads = createAsyncThunk(
   async (_, { getState }) => {
     try {
       const state = getState() as { download: DownloadSliceState };
+      
+      console.log('[saveDownloads] 🔍 Estado actual antes de guardar:');
+      console.log('[saveDownloads] 📊 Total downloads en estado:', state.download.downloads.length);
+      console.log('[saveDownloads] 📊 Por status:', {
+        completed: state.download.downloads.filter(d => d.status === 'completed').length,
+        downloading: state.download.downloads.filter(d => d.status === 'downloading').length,
+        paused: state.download.downloads.filter(d => d.status === 'paused').length,
+        error: state.download.downloads.filter(d => d.status === 'error').length,
+      });
       
       // Solo guardar descargas completadas para evitar inconsistencias
       const completedDownloads = state.download.downloads.filter(d => d.status === 'completed');
@@ -103,6 +109,191 @@ export const saveDownloads = createAsyncThunk(
       console.error('[downloadSlice] ❌ Error guardando descargas:', error);
       return false;
     }
+  }
+);
+
+// Thunk para escanear automáticamente el directorio de descargas al iniciar
+export const autoScanDownloads = createAsyncThunk(
+  'download/autoScan',
+  async (params: { authToken: string }, { getState, dispatch }) => {
+    try {
+      const downloadsDir = `${FileSystem.documentDirectory}downloads/`;
+      const dirInfo = await FileSystem.getInfoAsync(downloadsDir);
+      
+      if (!dirInfo.exists) {
+        return { syncedCount: 0, errorCount: 0 };
+      }
+      
+      const files = await FileSystem.readDirectoryAsync(downloadsDir);
+      
+      if (files.length === 0) {
+        return { syncedCount: 0, errorCount: 0 };
+      }
+      
+      // Cargar descargas existentes desde AsyncStorage
+      let existingDownloads: DownloadItem[] = [];
+      try {
+        const downloadsJson = await AsyncStorage.getItem('downloads');
+        if (downloadsJson) {
+          existingDownloads = JSON.parse(downloadsJson);
+        }
+      } catch (error) {
+        console.error('[autoScanDownloads] Error cargando descargas:', error);
+      }
+      
+      // Importar QobuzAPI
+      const { QobuzAPI } = await import('../../services/qobuz/QobuzAPI');
+      const qobuzAPI = new QobuzAPI();
+      qobuzAPI.setAuthToken(params.authToken);
+      
+      let syncedCount = 0;
+      let errorCount = 0;
+      
+      // Procesar archivo por archivo Y GUARDAR INMEDIATAMENTE
+      for (const filename of files) {
+        try {
+          const filePath = `${downloadsDir}${filename}`;
+          
+          // Verificar si ya existe
+          const alreadyExists = existingDownloads.some(d => d.localPath === filePath);
+          if (alreadyExists) {
+            continue;
+          }
+          
+          // Extraer artista y título del nombre del archivo
+          const nameWithoutExt = filename.replace(/\.(flac|mp3)$/i, '');
+          const [artist, title] = nameWithoutExt.split(' - ');
+          
+          if (!artist || !title) {
+            console.log('[autoScanDownloads] ⚠️ No se pudo parsear:', filename);
+            errorCount++;
+            continue;
+          }
+          
+          console.log('[autoScanDownloads] 🔍 Buscando metadatos:', artist, '-', title);
+          
+          // Buscar en Qobuz
+          const searchQuery = `${artist} ${title}`;
+          const searchResults = await qobuzAPI.searchTracks(searchQuery, 5);
+          
+          if (searchResults && searchResults.length > 0) {
+            const track = searchResults[0];
+            const extension = filename.toLowerCase().endsWith('.mp3') ? 'mp3' : 'flac';
+            const quality = extension === 'mp3' ? '5' : '27';
+            
+            console.log('[autoScanDownloads] ✅ Metadatos encontrados:', track.title);
+            
+            // Obtener tamaño del archivo
+            let fileSize = 0;
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(filePath);
+              if (fileInfo.exists && 'size' in fileInfo) {
+                fileSize = fileInfo.size;
+              }
+            } catch (error) {
+              console.error('[autoScanDownloads] ❌ Error obteniendo tamaño:', error);
+            }
+            
+            // Crear DownloadItem
+            const downloadId = `synced-${track.id}-${Date.now()}`;
+            const now = Date.now();
+            
+            const newDownload: DownloadItem = {
+              id: downloadId,
+              track: track,
+              status: 'completed',
+              progress: 100,
+              downloadedBytes: fileSize,
+              totalBytes: fileSize,
+              speed: 0,
+              timeRemaining: 0,
+              quality: quality,
+              localPath: filePath,
+              addedAt: now,
+              startedAt: now,
+              completedAt: now,
+            };
+            
+            // AGREGAR A ARRAY Y GUARDAR INMEDIATAMENTE EN ASYNCSTORAGE
+            existingDownloads.push(newDownload);
+            await AsyncStorage.setItem('downloads', JSON.stringify(existingDownloads));
+            
+            console.log('[autoScanDownloads] � Guardado en AsyncStorage:', track.title, '- Total:', existingDownloads.length);
+            
+            syncedCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          console.error('[autoScanDownloads] Error procesando', filename, ':', error);
+          errorCount++;
+        }
+      }
+      
+      // Recargar Redux si hay nuevos archivos
+      if (syncedCount > 0) {
+        await dispatch(loadDownloads());
+      }
+      
+      return { syncedCount, errorCount };
+    } catch (error) {
+      console.error('[autoScanDownloads] Error en escaneo:', error);
+      return { syncedCount: 0, errorCount: 0 };
+    }
+  }
+);
+
+// Thunk para agregar descarga ya completada (sync manual)
+export const addSyncedDownload = createAsyncThunk(
+  'download/addSynced',
+  async (params: {
+    track: Track;
+    localPath: string;
+    quality: string;
+  }, { getState, dispatch }) => {
+    console.log('[addSyncedDownload] 🔄 Adding synced download:', params.track.title);
+    
+    const state = getState() as { download: DownloadSliceState };
+    
+    // Verificar si ya existe
+    const exists = state.download.downloads.find(d => d.track.id === params.track.id);
+    if (exists) {
+      console.log('[addSyncedDownload] ⚠️ Download already exists, skipping');
+      return null;
+    }
+    
+    const downloadId = `synced-${params.track.id}-${Date.now()}`;
+    const now = Date.now();
+    
+    // Obtener el tamaño del archivo
+    let fileSize = 0;
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(params.localPath);
+      if (fileInfo.exists && 'size' in fileInfo) {
+        fileSize = fileInfo.size;
+      }
+    } catch (error) {
+      console.error('[addSyncedDownload] ❌ Error getting file size:', error);
+    }
+    
+    const syncedDownload: DownloadItem = {
+      id: downloadId,
+      track: params.track,
+      status: 'completed',
+      progress: 100,
+      downloadedBytes: fileSize,
+      totalBytes: fileSize,
+      speed: 0,
+      timeRemaining: 0,
+      quality: params.quality,
+      localPath: params.localPath,
+      addedAt: now,
+      startedAt: now,
+      completedAt: now,
+    };
+    
+    console.log('[addSyncedDownload] ✅ Created synced download entry');
+    return syncedDownload;
   }
 );
 
@@ -307,11 +498,41 @@ const downloadSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(loadDownloads.pending, (state) => {
+        console.log('[downloadSlice] ⏳ loadDownloads.pending - Iniciando carga...');
+      })
       .addCase(loadDownloads.fulfilled, (state, action) => {
+        console.log('[downloadSlice] 🔵 ==================== loadDownloads.fulfilled EJECUTÁNDOSE ====================');
+        console.log('[downloadSlice] 🔵 Payload recibido:', JSON.stringify(action.payload, null, 2));
+        console.log('[downloadSlice] 🔵 Estado ANTES de actualizar:', {
+          downloadsLength: state.downloads.length,
+          firstDownload: state.downloads[0]?.track?.title || 'N/A'
+        });
+        
         const { downloads, stats } = action.payload;
+        console.log('[downloadSlice] 🔵 Asignando al estado:', downloads.length, 'downloads');
         state.downloads = downloads;
         state.stats = stats;
-        console.log('[downloadSlice] ✅ Estado de descargas restaurado');
+        
+        console.log('[downloadSlice] 🔵 Estado DESPUÉS de actualizar:', {
+          downloadsLength: state.downloads.length,
+          firstDownload: state.downloads[0]?.track?.title || 'N/A'
+        });
+        console.log('[downloadSlice] ✅ Estado de descargas restaurado - Total en estado:', state.downloads.length);
+        console.log('[downloadSlice] 🔵 ==================== FIN loadDownloads.fulfilled ====================');
+      })
+      .addCase(loadDownloads.rejected, (state, action) => {
+        console.error('[downloadSlice] ❌ loadDownloads.rejected:', action.error);
+      })
+      .addCase(addSyncedDownload.fulfilled, (state, action) => {
+        if (action.payload) {
+          const syncedDownload = action.payload;
+          state.downloads.unshift(syncedDownload);
+          state.stats.successCount++;
+          state.stats.totalDownloaded++;
+          state.stats.totalSize += syncedDownload.downloadedBytes;
+          console.log('[downloadSlice] ✅ Synced download added:', syncedDownload.track.title);
+        }
       })
       .addCase(deleteDownloadWithFile.fulfilled, (state, action) => {
         const { downloadId, download } = action.payload;

@@ -13,6 +13,9 @@ import {
   ActivityIndicator,
   Easing,
   InteractionManager,
+  TextInput,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { BlurView } from 'expo-blur';
@@ -23,6 +26,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import type { Track } from '../../services/qobuz/types';
 import type { RootState } from '../../store/store';
 import { addToFavorites, removeFromFavorites } from '../../store/slices/favoritesSlice';
+import { createPlaylist, addTrackToPlaylist } from '../../store/slices/librarySlice';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const QUEUE_PANEL_HEIGHT = SCREEN_HEIGHT * 0.6;
@@ -40,6 +44,10 @@ interface FullPlayerProps {
   onTrackSelect?: (track: Track) => void;
   visible?: boolean; // Nueva prop para controlar visibilidad
   isLocalFile?: boolean; // Para saber si es archivo local o streaming
+  isShuffleEnabled?: boolean;
+  onShuffleToggle?: () => void;
+  repeatMode?: 'off' | 'all' | 'one';
+  onRepeatToggle?: () => void;
 }
 
 const FullPlayer: React.FC<FullPlayerProps> = ({
@@ -55,9 +63,14 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   onTrackSelect,
   visible = true,
   isLocalFile = false,
+  isShuffleEnabled = false,
+  onShuffleToggle,
+  repeatMode = 'off',
+  onRepeatToggle,
 }) => {
   const dispatch = useDispatch();
   const favoriteTracks = useSelector((state: RootState) => state.favorites.tracks);
+  const playlists = useSelector((state: RootState) => state.library.playlists);
   
   // Verificar si el track actual está en favoritos
   const isFavorite = favoriteTracks.some(fav => fav.id === track.id);
@@ -66,6 +79,8 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSeeking, setIsSeeking] = useState(false);
 
@@ -79,6 +94,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const queueSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const playlistModalOpacity = useRef(new Animated.Value(0)).current;
   const progressBarWidth = useRef(0);
   
   // Referencias para controlar animaciones de loop
@@ -454,6 +470,31 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     }
   };
 
+  // Manejar playlist
+  const handleOpenPlaylistModal = () => {
+    setShowPlaylistModal(true);
+  };
+
+  const handleClosePlaylistModal = () => {
+    setShowPlaylistModal(false);
+    setNewPlaylistName('');
+  };
+
+  const handleCreatePlaylist = () => {
+    if (newPlaylistName.trim()) {
+      dispatch(createPlaylist({ name: newPlaylistName.trim() }));
+      setNewPlaylistName('');
+      Alert.alert('Éxito', `Playlist "${newPlaylistName.trim()}" creada`);
+    }
+  };
+
+  const handleAddToPlaylist = (playlistId: string) => {
+    dispatch(addTrackToPlaylist({ playlistId, track }));
+    const playlist = playlists.find(p => p.id === playlistId);
+    Alert.alert('Éxito', `Añadido a "${playlist?.name}"`);
+    handleClosePlaylistModal();
+  };
+
   // Manejar errores de reproducción
   const handlePlaybackError = (errorMsg: string) => {
     setError(errorMsg);
@@ -657,15 +698,41 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
           {/* Additional Controls */}
           <View style={styles.additionalControls}>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-              <BlurView intensity={25} tint="dark" style={styles.iconButtonBlur}>
-                <Icon name="shuffle" size={24} color="rgba(255,255,255,0.6)" />
+            <TouchableOpacity 
+              style={[styles.iconButton, isShuffleEnabled && styles.iconButtonActive]} 
+              onPress={onShuffleToggle}
+              activeOpacity={0.7}
+              disabled={!onShuffleToggle}
+            >
+              <BlurView 
+                intensity={isShuffleEnabled ? 35 : 25} 
+                tint="dark" 
+                style={styles.iconButtonBlur}
+              >
+                <Icon 
+                  name="shuffle" 
+                  size={24} 
+                  color={isShuffleEnabled ? "#1DB954" : "rgba(255,255,255,0.6)"} 
+                />
               </BlurView>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-              <BlurView intensity={25} tint="dark" style={styles.iconButtonBlur}>
-                <Icon name="repeat" size={24} color="rgba(255,255,255,0.6)" />
+            <TouchableOpacity 
+              style={[styles.iconButton, repeatMode !== 'off' && styles.iconButtonActive]} 
+              onPress={onRepeatToggle}
+              activeOpacity={0.7}
+              disabled={!onRepeatToggle}
+            >
+              <BlurView 
+                intensity={repeatMode !== 'off' ? 35 : 25} 
+                tint="dark" 
+                style={styles.iconButtonBlur}
+              >
+                <Icon 
+                  name={repeatMode === 'one' ? 'repeat-one' : 'repeat'} 
+                  size={24} 
+                  color={repeatMode !== 'off' ? "#1DB954" : "rgba(255,255,255,0.6)"} 
+                />
               </BlurView>
             </TouchableOpacity>
 
@@ -702,6 +769,20 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
                   name={isFavorite ? "favorite" : "favorite-border"} 
                   size={24} 
                   color={isFavorite ? "#1DB954" : "rgba(255,255,255,0.6)"} 
+                />
+              </BlurView>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.iconButton} 
+              activeOpacity={0.7}
+              onPress={handleOpenPlaylistModal}
+            >
+              <BlurView intensity={25} tint="dark" style={styles.iconButtonBlur}>
+                <Icon 
+                  name="playlist-add" 
+                  size={24} 
+                  color="rgba(255,255,255,0.6)" 
                 />
               </BlurView>
             </TouchableOpacity>
@@ -826,6 +907,93 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           )}
         </BlurView>
       </Animated.View>
+
+      {/* Playlist Modal */}
+      <Modal
+        visible={showPlaylistModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleClosePlaylistModal}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={90} tint="dark" style={styles.modalBlur}>
+            <View style={styles.modalContent}>
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Añadir a Playlist</Text>
+                <TouchableOpacity onPress={handleClosePlaylistModal}>
+                  <Icon name="close" size={24} color="rgba(255,255,255,0.8)" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Create New Playlist */}
+              <View style={styles.createPlaylistSection}>
+                <TextInput
+                  style={styles.playlistInput}
+                  placeholder="Nombre de nueva playlist"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  value={newPlaylistName}
+                  onChangeText={setNewPlaylistName}
+                  onSubmitEditing={handleCreatePlaylist}
+                />
+                <TouchableOpacity
+                  style={[styles.createButton, !newPlaylistName.trim() && styles.createButtonDisabled]}
+                  onPress={handleCreatePlaylist}
+                  disabled={!newPlaylistName.trim()}
+                >
+                  <LinearGradient
+                    colors={newPlaylistName.trim() ? ['#1ed760', '#1DB954'] : ['#333', '#222']}
+                    style={styles.createButtonGradient}
+                  >
+                    <Icon name="add" size={20} color="#fff" />
+                    <Text style={styles.createButtonText}>Crear</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              {playlists.length > 0 && <View style={styles.modalDivider} />}
+
+              {/* Playlists List */}
+              <ScrollView style={styles.playlistsList} showsVerticalScrollIndicator={false}>
+                {playlists.length === 0 ? (
+                  <View style={styles.emptyPlaylists}>
+                    <Icon name="playlist-add" size={48} color="rgba(255,255,255,0.3)" />
+                    <Text style={styles.emptyPlaylistsText}>No tienes playlists</Text>
+                    <Text style={styles.emptyPlaylistsSubtext}>
+                      Crea una nueva playlist arriba
+                    </Text>
+                  </View>
+                ) : (
+                  playlists.map((playlist) => (
+                    <TouchableOpacity
+                      key={playlist.id}
+                      style={styles.playlistItem}
+                      onPress={() => handleAddToPlaylist(playlist.id)}
+                      activeOpacity={0.7}
+                    >
+                      <BlurView intensity={20} tint="dark" style={styles.playlistItemBlur}>
+                        <View style={styles.playlistItemLeft}>
+                          <Icon name="queue-music" size={24} color="#1DB954" />
+                          <View style={styles.playlistItemInfo}>
+                            <Text style={styles.playlistItemName} numberOfLines={1}>
+                              {playlist.name}
+                            </Text>
+                            <Text style={styles.playlistItemCount}>
+                              {playlist.tracks.length} {playlist.tracks.length === 1 ? 'canción' : 'canciones'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Icon name="add" size={24} color="rgba(255,255,255,0.6)" />
+                      </BlurView>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </BlurView>
+        </View>
+      </Modal>
     </Animated.View>
   );
 };
@@ -1237,6 +1405,122 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  // Playlist Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  modalBlur: {
+    width: SCREEN_WIDTH * 0.9,
+    maxHeight: SCREEN_HEIGHT * 0.7,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  modalContent: {
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  createPlaylistSection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  playlistInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#fff',
+  },
+  createButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  createButtonDisabled: {
+    opacity: 0.5,
+  },
+  createButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: 16,
+  },
+  playlistsList: {
+    maxHeight: SCREEN_HEIGHT * 0.4,
+  },
+  emptyPlaylists: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyPlaylistsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 16,
+  },
+  emptyPlaylistsSubtext: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  playlistItem: {
+    marginBottom: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  playlistItemBlur: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  playlistItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  playlistItemInfo: {
+    flex: 1,
+  },
+  playlistItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  playlistItemCount: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 });
 

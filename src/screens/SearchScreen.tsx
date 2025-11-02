@@ -371,12 +371,6 @@ const SearchScreen = () => {
   const lastPositionUpdate = useRef(0);
   const animationFrameId = useRef<number | null>(null);
   
-  // Monitorear cambios en downloadSettings
-  useEffect(() => {
-    console.log('[SearchScreen] 📊 downloadSettings changed:', downloadSettings);
-    console.log('[SearchScreen] 🎯 Current defaultQuality:', downloadSettings.defaultQuality);
-  }, [downloadSettings]);
-  
   // Actualizar progreso de reproducción usando el callback nativo
   useEffect(() => {
     if (!sound) return;
@@ -420,21 +414,9 @@ const SearchScreen = () => {
   // Establecer token de autenticación
   useEffect(() => {
     if (authToken && typeof authToken === 'string') {
-      console.log('[SearchScreen] Setting auth token in QobuzAPI');
       qobuzAPI.setAuthToken(authToken);
     }
   }, [authToken]);
-
-  // Debug: Monitorear cambios en estados del reproductor
-  useEffect(() => {
-    console.log('[SearchScreen] Estado del reproductor cambió:', {
-      miniPlayerVisible,
-      fullPlayerVisible,
-      currentTrack: currentTrack?.title || 'null',
-      isPlaying,
-      isFullTrack,
-    });
-  }, [miniPlayerVisible, fullPlayerVisible, currentTrack, isPlaying, isFullTrack]);
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -532,9 +514,8 @@ const SearchScreen = () => {
         setSound(null);
       }
 
-      // Establecer el estado de reproducción para mostrar animaciones en la tarjeta
+      // Establecer el track que está reproduciéndose
       setPlayingTrackId(track.id);
-      setIsPlaying(true);
 
       // Usar el mismo método que handleOpenMiniPlayer - reproducir canción completa
       console.log('[SearchScreen] Opening mini player and playing full track');
@@ -609,7 +590,6 @@ const SearchScreen = () => {
       }
 
       setPlayingTrackId(track.id);
-      setIsPlaying(true);
       setIsFullTrack(true);
 
       // Obtener la URL completa con firma MD5
@@ -632,19 +612,43 @@ const SearchScreen = () => {
         return;
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync(
+      const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
         { uri: fullTrackUrl },
-        { shouldPlay: true },
-        (status) => {
-          if (status.isLoaded && status.didJustFinish) {
+        { shouldPlay: true }
+      );
+      
+      // Configurar callback para actualizaciones de estado
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          if (status.didJustFinish) {
             setPlayingTrackId(null);
             setIsPlaying(false);
             setSound(null);
+          } else {
+            setIsPlaying(status.isPlaying);
           }
         }
-      );
+      });
 
       setSound(newSound);
+      
+      // Establecer isPlaying basado en el estado inicial real del sound
+      if (initialStatus.isLoaded) {
+        setIsPlaying(initialStatus.isPlaying);
+      }
+      
+      // Verificar el estado después de un breve momento para asegurar sincronización
+      setTimeout(async () => {
+        try {
+          const currentStatus = await newSound.getStatusAsync();
+          if (currentStatus.isLoaded && currentStatus.isPlaying) {
+            setIsPlaying(true);
+            console.log('[SearchScreen] ✅ Estado actualizado a playing después de verificación');
+          }
+        } catch (e) {
+          console.log('[SearchScreen] Error verificando estado:', e);
+        }
+      }, 200);
 
     } catch (error) {
       console.error('Error playing full track:', error);

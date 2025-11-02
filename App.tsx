@@ -15,7 +15,11 @@ import store from './src/store';
 import type { RootState } from './src/store';
 import { setUser, setToken } from './src/store/slices/authSlice';
 import { loadFavorites, validateLocalFavorites } from './src/store/slices/favoritesSlice';
-import { loadDownloads } from './src/store/slices/downloadSlice';
+import { loadDownloads, autoScanDownloads } from './src/store/slices/downloadSlice';
+import { loadLibrary } from './src/store/slices/librarySlice';
+
+// Exponer store globalmente para debug
+(global as any).store = store;
 
 // Services
 import { downloadQueueManager } from './src/services/DownloadQueueManager';
@@ -27,6 +31,8 @@ import DownloadsScreen from './src/screens/DownloadsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ArtistDetailScreen from './src/screens/ArtistDetailScreen';
+import AlbumDetailScreen from './src/screens/AlbumDetailScreen';
+import PlaylistDetailScreen from './src/screens/PlaylistDetailScreen';
 
 // Components
 import MiniPlayerWrapper from './src/components/MiniPlayerWrapper';
@@ -119,28 +125,25 @@ const AppNavigator = () => {
         const savedToken = await AsyncStorage.getItem('qobuz_token');
         const savedUser = await AsyncStorage.getItem('qobuz_user');
         
-        console.log('[AppNavigator] Auth guardado:', { hasToken: !!savedToken, hasUser: !!savedUser });
-        
         if (savedToken && savedUser) {
           const userData = JSON.parse(savedUser);
-          console.log('[AppNavigator] Datos a restaurar:', { token: savedToken.substring(0, 20) + '...', userData });
-          
           dispatch(setToken(savedToken));
           dispatch(setUser(userData));
-          console.log('[AppNavigator] Sesión restaurada');
         }
         
-        // Cargar favoritos desde AsyncStorage
+        // Cargar favoritos y validar
         await dispatch(loadFavorites() as any);
-        console.log('[AppNavigator] Favoritos cargados');
-        
-        // Validar favoritos locales (eliminar los que no tienen archivo)
         await dispatch(validateLocalFavorites() as any);
-        console.log('[AppNavigator] Favoritos locales validados');
         
-        // Cargar descargas desde AsyncStorage
-        dispatch(loadDownloads() as any);
-        console.log('[AppNavigator] Descargas cargadas');
+        // Cargar biblioteca (albums, artists, playlists)
+        await dispatch(loadLibrary() as any);
+        
+        // Cargar descargas y escanear archivos
+        await dispatch(loadDownloads() as any);
+        
+        if (savedToken) {
+          await dispatch(autoScanDownloads({ authToken: savedToken }) as any);
+        }
       } catch (error) {
         console.error('[AppNavigator] Error cargando auth:', error);
       } finally {
@@ -154,19 +157,10 @@ const AppNavigator = () => {
   // Inicializar DownloadQueueManager cuando hay autenticación
   useEffect(() => {
     if (isAuthenticated && authToken) {
-      console.log('[AppNavigator] Inicializando DownloadQueueManager');
       downloadQueueManager.setAuthToken(authToken);
-      // Forzar procesamiento de cola pendiente
       downloadQueueManager.forceProcessQueue();
     }
   }, [isAuthenticated, authToken]);
-
-  // Monitorear cambios en isAuthenticated
-  useEffect(() => {
-    console.log('[AppNavigator] isAuthenticated cambió a:', isAuthenticated);
-  }, [isAuthenticated]);
-
-  console.log('[AppNavigator] Estado auth:', { isAuthenticated, user });
 
   // Mostrar loading mientras se carga la autenticación
   if (isLoadingAuth) {
@@ -185,6 +179,8 @@ const AppNavigator = () => {
           <>
             <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
+            <Stack.Screen name="AlbumDetail" component={AlbumDetailScreen} />
+            <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

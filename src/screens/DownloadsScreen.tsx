@@ -109,7 +109,7 @@ const DownloadsScreen = () => {
       });
 
       // Crear y reproducir el sonido desde el archivo local
-      const { sound } = await Audio.Sound.createAsync(
+      const { sound, status: initialStatus } = await Audio.Sound.createAsync(
         { uri: download.localPath },
         { shouldPlay: true }
       );
@@ -134,9 +134,13 @@ const DownloadsScreen = () => {
       // Actualizar el contexto del player
       playerContext.setSound(sound);
       playerContext.setCurrentTrack(trackWithLocalUri); // Usar track con localUri
-      playerContext.setIsPlaying(true);
       playerContext.setMiniPlayerVisible(true);
       playerContext.setIsLocalFile(true);
+      
+      // Establecer isPlaying basado en el estado inicial real del sound
+      if (initialStatus.isLoaded) {
+        playerContext.setIsPlaying(initialStatus.isPlaying);
+      }
 
       console.log('[DownloadsScreen] ✅ Playing local track:', download.track.title);
       console.log('[DownloadsScreen] 📁 Local URI saved in track:', download.localPath);
