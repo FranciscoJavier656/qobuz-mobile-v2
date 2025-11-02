@@ -489,9 +489,10 @@ const LibraryScreen = () => {
   
   // Cargar biblioteca desde AsyncStorage al iniciar
   useEffect(() => {
-    dispatch(loadLibrary()).then(() => {
-      dispatch(processExistingDownloads());
-    });
+    dispatch(loadLibrary());
+    // NO ejecutar processExistingDownloads - ya no es necesario
+    // Library se carga correctamente desde AsyncStorage
+    // Las nuevas descargas se agregan automáticamente vía addMetadataFromTrackAsync
     
     // BYPASS Redux - Leer directamente de AsyncStorage
     const loadDownloadsDirectly = async () => {
