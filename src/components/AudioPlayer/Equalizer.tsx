@@ -83,79 +83,161 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
   const [eqValues, setEqValues] = useState<number[]>(PRESETS.flat.values);
   const [selectedPreset, setSelectedPreset] = useState<string>('flat');
   
-  // Animaciones para efecto "genie" estilo macOS
-  const [scaleAnim] = useState(new Animated.Value(0));
-  const [translateYAnim] = useState(new Animated.Value(400));
+  // Animaciones para efecto "genie" REAL estilo macOS - mucho más dramático
+  const [scaleYAnim] = useState(new Animated.Value(0.01)); // Casi invisible al inicio
+  const [scaleXAnim] = useState(new Animated.Value(0.05)); // Muy pequeño horizontalmente
+  const [translateYAnim] = useState(new Animated.Value(SCREEN_HEIGHT * 0.5)); // Desde la mitad inferior
   const [opacityAnim] = useState(new Animated.Value(0));
-  const [rotateAnim] = useState(new Animated.Value(0));
-  const [scaleXAnim] = useState(new Animated.Value(0.1)); // Para efecto de expansión horizontal
+  const [skewYAnim] = useState(new Animated.Value(0)); // Para distorsión
+  const [widthAnim] = useState(new Animated.Value(0)); // Expansión de ancho
+  
+  // Animación en múltiples fases como macOS
+  const [phase1] = useState(new Animated.Value(0)); // Fase inicial de expansión
+  const [phase2] = useState(new Animated.Value(0)); // Fase de estiramiento
+  const [phase3] = useState(new Animated.Value(0)); // Fase de rebote
 
   useEffect(() => {
     if (visible) {
+      console.log('[Equalizer] 🎭 Iniciando animación GENIE');
+      
+      // Resetear valores
+      scaleYAnim.setValue(0.01);
+      scaleXAnim.setValue(0.05);
+      translateYAnim.setValue(SCREEN_HEIGHT * 0.5);
+      opacityAnim.setValue(0);
+      phase1.setValue(0);
+      phase2.setValue(0);
+      phase3.setValue(0);
+      
       // Cargar valores guardados
       loadEqSettings();
       
-      // Efecto "genie" al abrir - parece que sale del botón y se expande
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 65,
-          friction: 9,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleXAnim, {
-          toValue: 1,
-          tension: 70,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-        Animated.spring(translateYAnim, {
-          toValue: 0,
-          tension: 65,
-          friction: 9,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-        Animated.spring(rotateAnim, {
-          toValue: 1,
-          tension: 60,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // EFECTO GENIE REAL - Animación en 3 fases secuenciales
+      Animated.sequence([
+        // FASE 1: Aparición y expansión vertical dramática (0-200ms)
+        Animated.parallel([
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(phase1, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleYAnim, {
+            toValue: 0.6, // Se estira verticalmente primero
+            tension: 100,
+            friction: 10,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleXAnim, {
+            toValue: 0.3, // Sigue estrecho
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateYAnim, {
+            toValue: SCREEN_HEIGHT * 0.3,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]),
+        
+        // FASE 2: Expansión horizontal con distorsión (200-400ms)
+        Animated.parallel([
+          Animated.spring(scaleXAnim, {
+            toValue: 1.1, // Expansión horizontal dramática con overshoot
+            tension: 80,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleYAnim, {
+            toValue: 0.95, // Se comprime un poco verticalmente
+            tension: 90,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+          Animated.timing(phase2, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.spring(translateYAnim, {
+            toValue: 0,
+            tension: 70,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+        ]),
+        
+        // FASE 3: Rebote final y ajuste (400-550ms)
+        Animated.parallel([
+          Animated.spring(scaleXAnim, {
+            toValue: 1, // Vuelve al tamaño normal
+            tension: 100,
+            friction: 9,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleYAnim, {
+            toValue: 1, // Tamaño normal
+            tension: 100,
+            friction: 9,
+            useNativeDriver: true,
+          }),
+          Animated.timing(phase3, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(() => {
+        console.log('[Equalizer] ✅ Animación GENIE completada');
+      });
+      
     } else {
-      // Efecto "genie" al cerrar - parece que se contrae hacia el botón
+      console.log('[Equalizer] 🎭 Cerrando con animación inversa');
+      
+      // CIERRE: Efecto inverso - se contrae hacia el botón
       Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 0,
-          duration: 280,
+        Animated.timing(scaleYAnim, {
+          toValue: 0.01,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(scaleXAnim, {
-          toValue: 0.1,
-          duration: 280,
+          toValue: 0.05,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(translateYAnim, {
-          toValue: 400,
-          duration: 280,
+          toValue: SCREEN_HEIGHT * 0.6,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
           toValue: 0,
-          duration: 280,
+          duration: 300,
           useNativeDriver: true,
         }),
-        Animated.timing(rotateAnim, {
+        Animated.timing(phase1, {
           toValue: 0,
-          duration: 280,
+          duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+        Animated.timing(phase2, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(phase3, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        console.log('[Equalizer] ✅ Cierre completado');
+      });
     }
   }, [visible]);
 
@@ -228,35 +310,48 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
         />
       </Animated.View>
 
-      {/* Contenedor principal con efecto "genie" */}
+      {/* Contenedor principal con efecto "genie" DRAMÁTICO */}
       <Animated.View 
         style={[
           styles.container,
           {
             opacity: opacityAnim,
             transform: [
+              // Traslación vertical - se mueve desde abajo
               {
                 translateY: translateYAnim,
               },
+              // Escala vertical - se estira dramáticamente
               {
-                scaleY: scaleAnim.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [0.2, 1.08, 1], // Efecto de "rebote" vertical al expandirse
-                }),
+                scaleY: scaleYAnim,
               },
+              // Escala horizontal - expansión dramática con distorsión
               {
-                scaleX: scaleXAnim.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [0.1, 1.05, 1], // Expansión horizontal dramática
-                }),
+                scaleX: scaleXAnim,
               },
+              // Perspectiva 3D pronunciada
               {
-                perspective: 1200,
+                perspective: 1500,
               },
+              // Rotación en X para efecto de profundidad
               {
-                rotateX: rotateAnim.interpolate({
+                rotateX: phase1.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['50deg', '0deg'], // Rotación 3D pronunciada para efecto "genie"
+                  outputRange: ['60deg', '20deg'], // Rotación pronunciada al inicio
+                }),
+              },
+              // Rotación adicional que se va reduciendo
+              {
+                rotateX: phase2.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['20deg', '5deg'],
+                }),
+              },
+              // Rotación final de ajuste
+              {
+                rotateX: phase3.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['5deg', '0deg'],
                 }),
               },
             ],
