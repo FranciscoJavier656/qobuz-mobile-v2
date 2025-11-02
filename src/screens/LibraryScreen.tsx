@@ -742,13 +742,21 @@ const LibraryScreen = () => {
   // Función para reproducir track local
   const playLocalTrack = async (track: Track) => {
     try {
-      // Verificar si el track tiene una URI local
-      const localUri = (track as any).localUri || (track as any).local_file_uri;
+      // Verificar si el track tiene una URI local (múltiples formatos posibles)
+      const localUri = (track as any).localPath || (track as any).localUri || (track as any).local_file_uri;
       
       if (!localUri) {
         console.error('[LibraryScreen] ❌ No local URI found for track:', track.title);
+        console.error('[LibraryScreen] 📊 Track data:', { 
+          hasLocalPath: !!(track as any).localPath,
+          hasLocalUri: !!(track as any).localUri,
+          hasLocalFileUri: !!(track as any).local_file_uri,
+          trackKeys: Object.keys(track)
+        });
         throw new Error('No local URI found');
       }
+
+      console.log('[LibraryScreen] 🎵 Playing local track from:', localUri);
 
       // Si hay un sonido anterior, detenerlo
       if (sound) {
