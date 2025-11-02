@@ -82,10 +82,6 @@ const convertArtistsToItems = (artistsList: Artist[]): LibraryItem[] => {
 };
 
 const convertPlaylistsToItems = (playlistsList: any[]): LibraryItem[] => {
-  console.log('[LibraryScreen] 🎵 convertPlaylistsToItems llamado con:', playlistsList.length, 'playlists');
-  if (playlistsList.length > 0) {
-    console.log('[LibraryScreen] 🎵 Primera playlist:', playlistsList[0]);
-  }
   return playlistsList
     .filter(playlist => playlist.tracks && Array.isArray(playlist.tracks)) // Filtrar playlists sin tracks válidos
     .map(playlist => ({
@@ -198,7 +194,6 @@ const selectArtistItems = createSelector(
 const selectPlaylistItems = createSelector(
   [selectPlaylists],
   (playlists) => {
-    console.log('[LibraryScreen] 🎯 selectPlaylistItems selector ejecutado con:', playlists.length, 'playlists');
     return convertPlaylistsToItems(playlists);
   }
 );
@@ -221,8 +216,6 @@ const selectLocalTracks = createSelector(
         });
       }
     });
-    
-    console.log('[LibraryScreen] 📥 Tracks locales encontradas:', localTracks.length);
     
     return localTracks;
   }
@@ -472,11 +465,7 @@ const LibraryScreen = () => {
   
   // 🔍 DEBUG: Log cuando playlistItems cambia
   useEffect(() => {
-    console.log('[LibraryScreen] 📊 playlistItems actualizado:', playlistItems.length);
-    console.log('[LibraryScreen] 📊 libraryIsLoaded:', libraryIsLoaded);
-    if (playlistItems.length > 0) {
-      console.log('[LibraryScreen] 📊 Playlists:', playlistItems.map(p => p.title).join(', '));
-    }
+    // Log removido para mejor rendimiento
   }, [playlistItems, libraryIsLoaded]);
   
     // Aplicar filtro a favoritos
@@ -752,17 +741,13 @@ const LibraryScreen = () => {
   // Función para reproducir track local
   const playLocalTrack = async (track: Track) => {
     try {
-      console.log('[LibraryScreen] Playing LOCAL track:', track.title);
-      
       // Verificar si el track tiene una URI local
       const localUri = (track as any).localUri || (track as any).local_file_uri;
       
       if (!localUri) {
-        console.error('[LibraryScreen] No local URI found for track:', track);
+        console.error('[LibraryScreen] ❌ No local URI found for track:', track.title);
         throw new Error('No local URI found');
       }
-
-      console.log('[LibraryScreen] Local URI found:', localUri);
 
       // Si hay un sonido anterior, detenerlo
       if (sound) {
@@ -773,13 +758,13 @@ const LibraryScreen = () => {
             await sound.unloadAsync();
           }
         } catch (e) {
-          console.log('[LibraryScreen] Sound already unloaded');
+          // Ignorar errores de cleanup
         }
         setSound(null);
       }
 
       setIsLocalFile(true);
-
+      
       const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
         { uri: localUri },
         { shouldPlay: true }
@@ -791,7 +776,6 @@ const LibraryScreen = () => {
           setIsPlaying(status.isPlaying);
           
           if (status.didJustFinish) {
-            console.log('[LibraryScreen] 🎵 Track terminó, reproduciendo siguiente...');
             setIsPlaying(false);
             playNextInQueue();
           }
@@ -802,7 +786,7 @@ const LibraryScreen = () => {
       
       // Establecer isPlaying basado en el estado inicial real del sound
       if (initialStatus.isLoaded) {
-        setIsPlaying(initialStatus.isPlaying);
+        setIsPlaying((initialStatus as any).isPlaying);
       }
       
       // Verificar el estado después de un breve momento para asegurar sincronización
@@ -811,17 +795,14 @@ const LibraryScreen = () => {
           const currentStatus = await newSound.getStatusAsync();
           if (currentStatus.isLoaded && currentStatus.isPlaying) {
             setIsPlaying(true);
-            console.log('[LibraryScreen] ✅ Estado actualizado a playing después de verificación');
           }
         } catch (e) {
-          console.log('[LibraryScreen] Error verificando estado:', e);
+          // Ignorar errores
         }
       }, 200);
-      
-      console.log('[LibraryScreen] ✅ Local track playing');
 
     } catch (error) {
-      console.error('[LibraryScreen] Error playing local track:', error);
+      console.error('[LibraryScreen] ❌ Error playing local track:', error);
       setIsPlaying(false);
       Alert.alert('Error', 'No se pudo reproducir el archivo local');
     }
@@ -899,36 +880,25 @@ const LibraryScreen = () => {
   // Handler para reproducir downloads (siempre locales)
   const handlePlayDownload = async (itemId: string) => {
     try {
-      console.log('[LibraryScreen] handlePlayDownload called for itemId:', itemId);
-      
       // Buscar el item en downloadItems (ahora contiene tracks con localPath)
-      const downloadItem = downloadItems.find((item: any) => item.id === itemId);
+      const downloadItem: any = downloadItems.find((item: any) => item.id === itemId);
       
       if (!downloadItem || !downloadItem.track) {
-        console.error('[LibraryScreen] Download item not found for itemId:', itemId);
+        console.error('[LibraryScreen] ❌ Download item not found for itemId:', itemId);
         return;
       }
 
       const track = downloadItem.track;
       const trackId = track.id.toString();
       
-      console.log('[LibraryScreen] Found download item:', {
-        itemId: downloadItem.id,
-        trackId: trackId,
-        title: track.title,
-        localPath: track.localPath,
-        hasLocalPath: !!track.localPath
-      });
-      
       // Verificar que el track tenga localPath
       if (!track.localPath) {
-        console.error('[LibraryScreen] Track does not have localPath:', track.title);
+        console.error('[LibraryScreen] ❌ Track does not have localPath:', track.title);
         return;
       }
 
       // Si es el mismo track, alternar play/pause
       if (currentTrack?.id.toString() === trackId && miniPlayerVisible) {
-        console.log('[LibraryScreen] Same track, toggling play/pause');
         if (sound) {
           const status = await sound.getStatusAsync();
           if (status.isLoaded) {
@@ -950,8 +920,6 @@ const LibraryScreen = () => {
       setFullPlayerVisible(false);
 
       // Los downloads siempre son locales
-      console.log('[LibraryScreen] Playing download from local file:', track.localPath);
-      
       // Crear un track con la URI local
       const trackWithLocalUri = {
         ...track,
@@ -962,7 +930,7 @@ const LibraryScreen = () => {
       await playLocalTrack(trackWithLocalUri);
 
     } catch (error) {
-      console.error('[LibraryScreen] Error in handlePlayDownload:', error);
+      console.error('[LibraryScreen] ❌ Error in handlePlayDownload:', error);
       setIsPlaying(false);
     }
   };
@@ -1056,7 +1024,6 @@ const LibraryScreen = () => {
       }
       
       const albumsList = JSON.parse(albumsData);
-      console.log('[LibraryScreen] 🎵 Found', albumsList.length, 'albums in storage');
       
       const album = albumsList.find((a: any) => a.id.toString() === albumId);
       
@@ -1065,13 +1032,12 @@ const LibraryScreen = () => {
         return;
       }
 
-      // Obtener las tracks del álbum desde la API o local
+      // Obtener las tracks locales del álbum (descargadas)
       let tracks: any[] = [];
       
-      if (album.tracks?.items && Array.isArray(album.tracks.items) && album.tracks.items.length > 0) {
-        tracks = album.tracks.items;
+      if (album.localTracks && Array.isArray(album.localTracks) && album.localTracks.length > 0) {
+        tracks = album.localTracks;
       } else {
-        console.log('[LibraryScreen] 📦 Álbum no tiene tracks, necesita descargarse o sincronizarse');
         Alert.alert(
           'Álbum sin tracks',
           'Este álbum no tiene canciones descargadas. Por favor, descarga el álbum primero.',
@@ -1079,51 +1045,23 @@ const LibraryScreen = () => {
         );
         return;
       }
-
-      console.log('[LibraryScreen] 🎵 Reproduciendo álbum:', album.title, 'con', tracks.length, 'tracks');
       
-      // Buscar localPaths en las descargas para todas las tracks
-      console.log('[LibraryScreen] 📦 Buscando localPaths en downloads...');
-      const downloadsJson = await AsyncStorage.getItem('downloads');
-      const tracksWithPaths = tracks.map((track: any) => {
-        let localPath = track.localPath || track.local_file_uri;
-        
-        // Buscar en downloads si no tiene localPath
-        if (!localPath && downloadsJson) {
-          try {
-            const downloads = JSON.parse(downloadsJson);
-            const download = downloads.find((d: any) => d.track.id === track.id);
-            if (download && download.localPath) {
-              localPath = download.localPath;
-              console.log('[LibraryScreen] ✅ LocalPath encontrado para:', track.title, '→', localPath);
-            }
-          } catch (error) {
-            console.error('[LibraryScreen] Error parsing downloads:', error);
-          }
-        }
-        
-        // Retornar track con localPath si existe
-        return localPath ? { ...track, localPath, local_file_uri: localPath } : track;
-      });
-      
-      // Configurar la cola de reproducción con las tracks actualizadas
-      setQueue(tracksWithPaths);
+      // Configurar la cola de reproducción
+      setQueue(tracks);
       setCurrentIndex(0);
       
       // Reproducir el primer track
-      const firstTrack = tracksWithPaths[0];
+      const firstTrack = tracks[0];
       setCurrentTrack(firstTrack);
       setMiniPlayerVisible(true);
       setFullPlayerVisible(false);
 
-      // Verificar si el track tiene URI local
+      // Las tracks de localTracks ya tienen localPath configurado
       const localPath = firstTrack.localPath || firstTrack.local_file_uri;
       
       if (localPath) {
-        console.log('[LibraryScreen] 🎵 Reproduciendo desde archivo local:', localPath);
         await playLocalTrack(firstTrack);
       } else {
-        console.log('[LibraryScreen] 🎵 Reproduciendo desde streaming');
         await playStreamingTrack(firstTrack);
       }
 
@@ -1146,7 +1084,6 @@ const LibraryScreen = () => {
       }
       
       const artistsList = JSON.parse(artistsData);
-      console.log('[LibraryScreen] 🎵 Found', artistsList.length, 'artists in storage');
       
       const artist = artistsList.find((a: any) => a.id.toString() === artistId);
       
@@ -1155,33 +1092,37 @@ const LibraryScreen = () => {
         return;
       }
 
-      // Para artistas, necesitamos obtener todas las tracks de todos sus álbumes
-      // Por ahora, buscaremos en los downloads todas las tracks de ese artista
-      const downloadsJson = await AsyncStorage.getItem('downloads');
-      if (!downloadsJson) {
-        console.log('[LibraryScreen] 📦 No hay downloads, no se pueden reproducir tracks del artista');
+      // Buscar todas las tracks del artista en albums.localTracks
+      const albumsData = await AsyncStorage.getItem('@qobuz_library_albums');
+      if (!albumsData) {
         Alert.alert(
           'Sin canciones descargadas',
-          'No hay canciones descargadas de este artista. Por favor, descarga algunas canciones primero.',
+          'No hay canciones descargadas de este artista.',
           [{ text: 'OK' }]
         );
         return;
       }
 
-      const downloads = JSON.parse(downloadsJson);
-      const artistTracks = downloads
-        .filter((d: any) => {
-          const trackArtistName = d.track?.performer?.name || d.track?.album?.artist?.name;
-          return trackArtistName && trackArtistName.toLowerCase().includes(artist.name.toLowerCase());
-        })
-        .map((d: any) => ({
-          ...d.track,
-          localPath: d.localPath,
-          local_file_uri: d.localPath,
-        }));
+      const albums = JSON.parse(albumsData);
+      const artistTracks: any[] = [];
+
+      // Buscar en todos los álbumes
+      albums.forEach((album: any) => {
+        if (album.localTracks && Array.isArray(album.localTracks)) {
+          album.localTracks.forEach((track: any) => {
+            // Verificar si la track pertenece al artista
+            const performerId = track.performer?.id;
+            const performerName = track.performer?.name || track.album?.artist?.name;
+            
+            if (performerId?.toString() === artistId || 
+                performerName?.toLowerCase().includes(artist.name.toLowerCase())) {
+              artistTracks.push(track);
+            }
+          });
+        }
+      });
 
       if (artistTracks.length === 0) {
-        console.log('[LibraryScreen] 📦 No hay tracks descargadas de este artista');
         Alert.alert(
           'Sin canciones descargadas',
           `No hay canciones descargadas de ${artist.name}. Por favor, descarga algunas canciones primero.`,
@@ -1189,8 +1130,6 @@ const LibraryScreen = () => {
         );
         return;
       }
-
-      console.log('[LibraryScreen] 🎵 Reproduciendo artista:', artist.name, 'con', artistTracks.length, 'tracks');
       
       // Configurar la cola de reproducción
       setQueue(artistTracks);
@@ -1202,14 +1141,12 @@ const LibraryScreen = () => {
       setMiniPlayerVisible(true);
       setFullPlayerVisible(false);
 
-      // Verificar si el track tiene URI local
+      // Las tracks de localTracks ya tienen localPath configurado
       const localPath = firstTrack.localPath || firstTrack.local_file_uri;
       
       if (localPath) {
-        console.log('[LibraryScreen] 🎵 Reproduciendo desde archivo local:', localPath);
         await playLocalTrack(firstTrack);
       } else {
-        console.log('[LibraryScreen] 🎵 Reproduciendo desde streaming');
         await playStreamingTrack(firstTrack);
       }
 

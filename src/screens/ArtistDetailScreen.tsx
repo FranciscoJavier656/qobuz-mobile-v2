@@ -89,46 +89,23 @@ const ArtistDetailScreen = () => {
   const loadArtistTracks = async () => {
     setLoading(true);
     
-    // BYPASS: Intentar leer desde AsyncStorage si Redux está vacío
-    let downloadsToUse = downloads;
+    // Buscar todas las tracks de este artista en los albums.localTracks
+    const artistTracks: Track[] = [];
     
-    if (downloads.length === 0) {
-      try {
-        const downloadsJson = await AsyncStorage.getItem('downloads');
-        if (downloadsJson) {
-          downloadsToUse = JSON.parse(downloadsJson);
-          console.log('[ArtistDetailScreen] BYPASS: Usando', downloadsToUse.length, 'descargas de AsyncStorage');
-        }
-      } catch (error) {
-        console.error('[ArtistDetailScreen] Error cargando descargas:', error);
+    albums.forEach(album => {
+      if (album.localTracks && Array.isArray(album.localTracks)) {
+        album.localTracks.forEach(track => {
+          const performerId = track.performer?.id?.toString();
+          const performerName = track.performer?.name?.toLowerCase();
+          const searchName = artistName?.toLowerCase();
+          
+          // Comparar por ID o por nombre
+          if (performerId === artistId || performerName === searchName) {
+            artistTracks.push(track);
+          }
+        });
       }
-    }
-    
-    // Debug: Ver performers de todas las descargas
-    console.log('[ArtistDetailScreen] Buscando artista:', { artistId, artistName });
-    console.log('[ArtistDetailScreen] Performers únicos:', 
-      [...new Set(downloadsToUse
-        .filter(d => d.status === 'completed')
-        .map(d => `${d.track.performer?.name} (ID: ${d.track.performer?.id})`)
-      )]
-    );
-    
-    // Filtrar tracks de este artista desde las descargas
-    // Intentar comparar tanto por ID como por nombre (case-insensitive)
-    const artistTracks = downloadsToUse
-      .filter(download => {
-        if (download.status !== 'completed') return false;
-        
-        const performerId = download.track.performer?.id?.toString();
-        const performerName = download.track.performer?.name?.toLowerCase();
-        const searchName = artistName?.toLowerCase();
-        
-        // Comparar por ID o por nombre
-        return performerId === artistId || performerName === searchName;
-      })
-      .map(download => download.track);
-    
-    console.log('[ArtistDetailScreen] Tracks encontradas para', artistName, ':', artistTracks.length);
+    });
 
     // Ordenar por álbum y track number
     const sortedTracks = artistTracks.sort((a, b) => {
@@ -179,22 +156,10 @@ const ArtistDetailScreen = () => {
       setSound(null);
     }
 
-    // Buscar la descarga correspondiente para obtener el localPath
-    let downloadsToUse = downloads;
-    if (downloads.length === 0) {
-      try {
-        const downloadsJson = await AsyncStorage.getItem('downloads');
-        if (downloadsJson) {
-          downloadsToUse = JSON.parse(downloadsJson);
-        }
-      } catch (error) {
-        console.error('[ArtistDetailScreen] Error cargando descargas:', error);
-      }
-    }
-
-    const download = downloadsToUse.find(d => d.track.id.toString() === trackId);
-    if (!download || !download.localPath) {
-      console.error('[ArtistDetailScreen] No se encontró localPath para track:', trackId);
+    // El track ya debe tener localPath de album.localTracks
+    const localPath = (track as any).localPath || (track as any).local_file_uri;
+    if (!localPath) {
+      console.error('[ArtistDetailScreen] ❌ Track no tiene localPath:', track.title);
       return;
     }
 
@@ -208,7 +173,7 @@ const ArtistDetailScreen = () => {
 
       // Crear y reproducir el sonido
       const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
-        { uri: download.localPath },
+        { uri: localPath },
         { shouldPlay: true }
       );
 

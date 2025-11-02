@@ -39,10 +39,17 @@ export const loadLibrary = createAsyncThunk(
         AsyncStorage.getItem('@qobuz_library_playlists'),
       ]);
       
+      const albums = albumsJson ? JSON.parse(albumsJson) : [];
+      const artists = artistsJson ? JSON.parse(artistsJson) : [];
+      const playlists = playlistsJson ? JSON.parse(playlistsJson) : [];
+      
+      console.log('[LibrarySlice] ✅ Biblioteca cargada desde AsyncStorage');
+      console.log('[LibrarySlice] � Albums:', albums.length, 'Artists:', artists.length, 'Playlists:', playlists.length);
+      
       return {
-        albums: albumsJson ? JSON.parse(albumsJson) : [],
-        artists: artistsJson ? JSON.parse(artistsJson) : [],
-        playlists: playlistsJson ? JSON.parse(playlistsJson) : [],
+        albums,
+        artists,
+        playlists,
       };
     } catch (error) {
       console.error('[LibrarySlice] Error loading library:', error);

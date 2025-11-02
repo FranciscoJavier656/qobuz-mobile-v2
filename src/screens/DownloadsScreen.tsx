@@ -73,14 +73,6 @@ const DownloadsScreen = () => {
   const downloadsByStatus = useSelector(selectDownloadsByStatus);
   const stats = useSelector(selectDownloadStats);
   
-  // DEBUG: Log para ver qué recibe la UI
-  console.log('[DownloadsScreen] 📊 UI recibe downloads:', {
-    completed: downloadsByStatus.completed.length,
-    downloading: downloadsByStatus.downloading.length,
-    pending: downloadsByStatus.pending.length,
-    completedTracks: downloadsByStatus.completed.map(d => d.track.title)
-  });
-  
   // Obtener el contexto del player
   const playerContext = usePlayerContext();
 
@@ -190,12 +182,6 @@ const DownloadsScreen = () => {
           ...downloadsByStatus.error,
         ];
     }
-    
-    console.log('[DownloadsScreen] 🎯 filteredDownloads calculado:', {
-      filter,
-      count: result.length,
-      tracks: result.map((d: DownloadItem) => d.track.title)
-    });
     
     return result;
   }, [filter, downloadsByStatus]);

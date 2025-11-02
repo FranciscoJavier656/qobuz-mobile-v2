@@ -50,7 +50,9 @@ const MiniPlayerWrapper: React.FC = () => {
   }, [sound, isPlaying]);
 
   const handlePlayPause = async () => {
-    if (!sound) return;
+    if (!sound) {
+      return;
+    }
 
     try {
       const status = await sound.getStatusAsync();
@@ -64,7 +66,7 @@ const MiniPlayerWrapper: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('[MiniPlayerWrapper] Error toggling play/pause:', error);
+      console.error('[MiniPlayerWrapper] ❌ Error toggling play/pause:', error);
     }
   };
 

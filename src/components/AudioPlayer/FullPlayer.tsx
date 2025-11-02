@@ -69,8 +69,8 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   onRepeatToggle,
 }) => {
   const dispatch = useDispatch();
-  const favoriteTracks = useSelector((state: RootState) => state.favorites.tracks);
-  const playlists = useSelector((state: RootState) => state.library.playlists);
+  const favoriteTracks = useSelector((state: RootState) => state.favorites?.tracks ?? []);
+  const playlists = useSelector((state: RootState) => state.library?.playlists ?? []);
   
   // Verificar si el track actual está en favoritos
   const isFavorite = favoriteTracks.some(fav => fav.id === track.id);
