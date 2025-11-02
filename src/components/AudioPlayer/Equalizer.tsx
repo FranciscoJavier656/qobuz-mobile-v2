@@ -82,25 +82,80 @@ interface EqualizerProps {
 const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
   const [eqValues, setEqValues] = useState<number[]>(PRESETS.flat.values);
   const [selectedPreset, setSelectedPreset] = useState<string>('flat');
-  const [fadeAnim] = useState(new Animated.Value(0));
+  
+  // Animaciones para efecto "genie" estilo macOS
+  const [scaleAnim] = useState(new Animated.Value(0));
+  const [translateYAnim] = useState(new Animated.Value(400));
+  const [opacityAnim] = useState(new Animated.Value(0));
+  const [rotateAnim] = useState(new Animated.Value(0));
+  const [scaleXAnim] = useState(new Animated.Value(0.1)); // Para efecto de expansión horizontal
 
   useEffect(() => {
     if (visible) {
       // Cargar valores guardados
       loadEqSettings();
       
-      Animated.spring(fadeAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
+      // Efecto "genie" al abrir - parece que sale del botón y se expande
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 65,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleXAnim, {
+          toValue: 1,
+          tension: 70,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateYAnim, {
+          toValue: 0,
+          tension: 65,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.spring(rotateAnim, {
+          toValue: 1,
+          tension: 60,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      // Efecto "genie" al cerrar - parece que se contrae hacia el botón
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleXAnim, {
+          toValue: 0.1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateYAnim, {
+          toValue: 400,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [visible]);
 
@@ -154,17 +209,57 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
       animationType="none"
       onRequestClose={onClose}
     >
+      {/* Backdrop animado con blur */}
+      <Animated.View 
+        style={[
+          styles.backdrop,
+          {
+            opacity: opacityAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 1],
+            }),
+          }
+        ]}
+      >
+        <TouchableOpacity 
+          style={StyleSheet.absoluteFill} 
+          activeOpacity={1} 
+          onPress={onClose}
+        />
+      </Animated.View>
+
+      {/* Contenedor principal con efecto "genie" */}
       <Animated.View 
         style={[
           styles.container,
           {
-            opacity: fadeAnim,
-            transform: [{
-              translateY: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [SCREEN_HEIGHT, 0],
-              })
-            }]
+            opacity: opacityAnim,
+            transform: [
+              {
+                translateY: translateYAnim,
+              },
+              {
+                scaleY: scaleAnim.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [0.2, 1.08, 1], // Efecto de "rebote" vertical al expandirse
+                }),
+              },
+              {
+                scaleX: scaleXAnim.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [0.1, 1.05, 1], // Expansión horizontal dramática
+                }),
+              },
+              {
+                perspective: 1200,
+              },
+              {
+                rotateX: rotateAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['50deg', '0deg'], // Rotación 3D pronunciada para efecto "genie"
+                }),
+              },
+            ],
           }
         ]}
       >
@@ -317,6 +412,10 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
 };
 
 const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+  },
   container: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.95)',
