@@ -448,6 +448,7 @@ const LibraryScreen = () => {
   const setCurrentIndex = playerContext.setCurrentIndex;
   const repeatMode = playerContext.repeatMode;
   const playNextTrack = playerContext.playNextTrack; // ✅ Usar función centralizada
+  const setupSoundCallback = playerContext.setupSoundCallback; // ✅ Configurar autoplay
 
   // Estado de autenticación
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -699,17 +700,7 @@ const LibraryScreen = () => {
       );
 
       // Configurar callback para cuando termine la canción
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          setIsPlaying(status.isPlaying);
-          
-          if (status.didJustFinish) {
-            console.log('[LibraryScreen] 🎵 Track terminó, reproduciendo siguiente...');
-            setIsPlaying(false);
-            playNextTrack(); // ✅ Usar función centralizada
-          }
-        }
-      });
+      setupSoundCallback(newSound);
 
       setSound(newSound);
       
@@ -781,16 +772,7 @@ const LibraryScreen = () => {
       );
 
       // Configurar callback para cuando termine la canción
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          setIsPlaying(status.isPlaying);
-          
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-            playNextTrack(); // ✅ Usar función centralizada
-          }
-        }
-      });
+      setupSoundCallback(newSound);
 
       setSound(newSound);
       

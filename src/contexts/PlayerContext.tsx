@@ -42,6 +42,7 @@ interface PlayerContextType {
   playNext: () => void;
   playPrevious: () => void;
   playNextTrack: () => Promise<void>;
+  setupSoundCallback: (sound: Audio.Sound) => void;
   isShuffleEnabled: boolean;
   setIsShuffleEnabled: (enabled: boolean) => void;
   repeatMode: 'off' | 'all' | 'one';
@@ -213,6 +214,21 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [sound, currentIndex, queue, repeatMode]);
 
+  // Función para configurar el callback de autoplay en cualquier sonido
+  const setupSoundCallback = useCallback((newSound: Audio.Sound) => {
+    console.log('[PlayerContext] ⚙️ Configurando callback de autoplay');
+    newSound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded) {
+        setIsPlaying(status.isPlaying);
+        
+        if (status.didJustFinish) {
+          console.log('[PlayerContext] 🎵 Track terminó, reproduciendo siguiente...');
+          setIsPlaying(false);
+          playNextTrack();
+        }
+      }
+    });
+  }, [playNextTrack]);
 
   return (
     <PlayerContext.Provider value={{ 
@@ -236,6 +252,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       playNext,
       playPrevious,
       playNextTrack,
+      setupSoundCallback,
       isShuffleEnabled,
       setIsShuffleEnabled,
       repeatMode,

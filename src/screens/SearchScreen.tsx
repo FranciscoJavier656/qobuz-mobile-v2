@@ -356,6 +356,7 @@ const SearchScreen = () => {
   const fullPlayerVisible = playerContext.fullPlayerVisible;
   const setFullPlayerVisible = playerContext.setFullPlayerVisible;
   const playNextTrack = playerContext.playNextTrack; // ✅ Agregar función centralizada
+  const setupSoundCallback = playerContext.setupSoundCallback; // ✅ Configurar autoplay
   const queue = playerContext.queue;
   const setQueue = playerContext.setQueue;
   const currentIndex = playerContext.currentIndex;
@@ -621,19 +622,8 @@ const SearchScreen = () => {
         { shouldPlay: true }
       );
       
-      // Configurar callback para actualizaciones de estado
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            console.log('[SearchScreen] 🎵 Track terminó, reproduciendo siguiente...');
-            setPlayingTrackId(null);
-            setIsPlaying(false);
-            playNextTrack(); // ✅ Usar función centralizada
-          } else {
-            setIsPlaying(status.isPlaying);
-          }
-        }
-      });
+      // Configurar callback para autoplay
+      setupSoundCallback(newSound);
 
       setSound(newSound);
       

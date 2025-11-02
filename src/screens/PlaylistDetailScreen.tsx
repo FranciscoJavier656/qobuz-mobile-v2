@@ -58,6 +58,7 @@ const PlaylistDetailScreen = () => {
     setCurrentIndex,
     repeatMode,
     playNextTrack, // ✅ Usar función centralizada
+    setupSoundCallback, // ✅ Configurar autoplay
   } = usePlayerContext();
 
   // Obtener playlist desde Redux
@@ -234,19 +235,8 @@ const PlaylistDetailScreen = () => {
         { shouldPlay: true }
       );
 
-      // Configurar callback para actualizaciones de estado
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          setIsPlaying(status.isPlaying);
-          
-          // Si la canción terminó, reproducir la siguiente en la cola
-          if (status.didJustFinish) {
-            console.log('[PlaylistDetailScreen] 🎵 Track terminó, reproduciendo siguiente...');
-            setIsPlaying(false);
-            playNextTrack();
-          }
-        }
-      });
+      // Configurar callback para autoplay
+      setupSoundCallback(newSound);
 
       setSound(newSound);
       setCurrentTrack(track);

@@ -55,6 +55,7 @@ const ArtistDetailScreen = () => {
     setCurrentIndex,
     repeatMode,
     playNextTrack, // ✅ Usar función centralizada
+    setupSoundCallback, // ✅ Configurar autoplay
   } = usePlayerContext();
 
   // Obtener tracks descargadas del artista (desde Redux)
@@ -178,19 +179,8 @@ const ArtistDetailScreen = () => {
         { shouldPlay: true }
       );
 
-      // Configurar callback para actualizaciones de estado
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          setIsPlaying(status.isPlaying);
-          
-          // Si la canción terminó, reproducir la siguiente en la cola
-          if (status.didJustFinish) {
-            console.log('[ArtistDetailScreen] 🎵 Track terminó, reproduciendo siguiente...');
-            setIsPlaying(false);
-            playNextTrack();
-          }
-        }
-      });
+      // Configurar callback para autoplay
+      setupSoundCallback(newSound);
 
       setSound(newSound);
       setCurrentTrack(track);
