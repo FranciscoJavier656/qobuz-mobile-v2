@@ -21,6 +21,7 @@ export interface Track {
   previewable?: boolean;
   preview_url?: string;
   sample_url?: string;
+  localPath?: string; // Ruta local del archivo descargado
 }
 
 export interface Album {

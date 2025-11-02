@@ -311,7 +311,7 @@ const librarySlice = createSlice({
     },
     addTrackToPlaylist: (state, action: PayloadAction<{ playlistId: string; track: Track }>) => {
       const playlist = state.playlists.find(p => p.id === action.payload.playlistId);
-      if (playlist) {
+      if (playlist && playlist.tracks) {
         const exists = playlist.tracks.find(t => t.id === action.payload.track.id);
         if (!exists) {
           playlist.tracks.push(action.payload.track);
@@ -322,7 +322,7 @@ const librarySlice = createSlice({
     },
     removeTrackFromPlaylist: (state, action: PayloadAction<{ playlistId: string; trackId: number }>) => {
       const playlist = state.playlists.find(p => p.id === action.payload.playlistId);
-      if (playlist) {
+      if (playlist && playlist.tracks) {
         playlist.tracks = playlist.tracks.filter(t => t.id !== action.payload.trackId);
         // Guardar automáticamente
         AsyncStorage.setItem('@qobuz_library_playlists', JSON.stringify(state.playlists));

@@ -15,6 +15,7 @@ export interface Track {
   duration?: number;
   streamable?: boolean;
   version?: string;
+  localPath?: string; // Ruta local del archivo descargado
 }
 
 export interface Album {

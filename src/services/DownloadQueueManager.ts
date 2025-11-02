@@ -111,9 +111,13 @@ export class DownloadQueueManager {
         async (localPath) => {
           console.log(`[DownloadQueue] ✅ Descarga completada: ${download.track.title}`);
           
-          // 1. Agregar metadatos del track a la biblioteca
+          // 1. Agregar metadatos del track a la biblioteca (con localPath)
           console.log('[DownloadQueue] 📚 Agregando a Library...');
-          await store.dispatch(addMetadataFromTrackAsync(download.track));
+          const trackWithLocalPath = {
+            ...download.track,
+            localPath: localPath, // Agregar la ruta local del archivo
+          };
+          await store.dispatch(addMetadataFromTrackAsync(trackWithLocalPath));
           
           // 2. ELIMINAR de Downloads (ya está en Library, no necesitamos mostrarla en Downloads)
           console.log('[DownloadQueue] 🗑️ Removiendo de Downloads (ya en Library)...');

@@ -57,12 +57,12 @@ const AlbumDetailScreen = () => {
     repeatMode,
   } = usePlayerContext();
 
-  // Obtener tracks descargadas del álbum (desde Redux)
-  const downloads = useSelector((state: RootState) => state.download.downloads);
+  // Obtener albums de Library (con localTracks)
+  const albums = useSelector((state: RootState) => state.library.albums);
 
   useEffect(() => {
     loadAlbumTracks();
-  }, [albumId]);
+  }, [albumId, albums]); // Re-cargar cuando albums cambien
 
   // Limpiar sound cuando el componente se desmonte
   useEffect(() => {
@@ -89,44 +89,29 @@ const AlbumDetailScreen = () => {
   const loadAlbumTracks = async () => {
     setLoading(true);
     
-    // BYPASS: Intentar leer desde AsyncStorage si Redux está vacío
-    let downloadsToUse = downloads;
+    console.log('[AlbumDetailScreen] 🔍 Buscando álbum en Library:', { albumId, albumTitle });
+    console.log('[AlbumDetailScreen] 📚 Albums disponibles:', albums.length);
     
-    if (downloads.length === 0) {
-      try {
-        const downloadsJson = await AsyncStorage.getItem('downloads');
-        if (downloadsJson) {
-          downloadsToUse = JSON.parse(downloadsJson);
-          console.log('[AlbumDetailScreen] BYPASS: Usando', downloadsToUse.length, 'descargas de AsyncStorage');
-        }
-      } catch (error) {
-        console.error('[AlbumDetailScreen] Error cargando descargas:', error);
-      }
+    // Buscar el álbum en Library usando albumId o albumTitle
+    const album = albums.find(a => 
+      a.id.toString() === albumId || 
+      a.title?.toLowerCase() === albumTitle?.toLowerCase()
+    );
+    
+    if (album && album.localTracks && album.localTracks.length > 0) {
+      console.log('[AlbumDetailScreen] ✅ Álbum encontrado con', album.localTracks.length, 'tracks locales');
+      
+      // Ordenar por track number
+      const sortedTracks = [...album.localTracks].sort((a, b) => {
+        return (a.track_number || 0) - (b.track_number || 0);
+      });
+      
+      setTracks(sortedTracks);
+    } else {
+      console.log('[AlbumDetailScreen] ⚠️ Álbum no encontrado o sin tracks locales');
+      setTracks([]);
     }
     
-    console.log('[AlbumDetailScreen] Buscando álbum:', { albumId, albumTitle });
-    
-    // Filtrar tracks de este álbum desde las descargas
-    const albumTracks = downloadsToUse
-      .filter(download => {
-        if (download.status !== 'completed') return false;
-        
-        const downloadAlbumTitle = download.track.album?.title?.toLowerCase();
-        const searchTitle = albumTitle?.toLowerCase();
-        
-        // Comparar por título
-        return downloadAlbumTitle === searchTitle;
-      })
-      .map(download => download.track);
-    
-    console.log('[AlbumDetailScreen] Tracks encontradas para', albumTitle, ':', albumTracks.length);
-
-    // Ordenar por track number
-    const sortedTracks = albumTracks.sort((a, b) => {
-      return (a.track_number || 0) - (b.track_number || 0);
-    });
-
-    setTracks(sortedTracks);
     setLoading(false);
   };
 
@@ -166,24 +151,13 @@ const AlbumDetailScreen = () => {
       setSound(null);
     }
 
-    // Buscar la descarga correspondiente para obtener el localPath
-    let downloadsToUse = downloads;
-    if (downloads.length === 0) {
-      try {
-        const downloadsJson = await AsyncStorage.getItem('downloads');
-        if (downloadsJson) {
-          downloadsToUse = JSON.parse(downloadsJson);
-        }
-      } catch (error) {
-        console.error('[AlbumDetailScreen] Error cargando descargas:', error);
-      }
-    }
-
-    const download = downloadsToUse.find(d => d.track.id.toString() === trackId);
-    if (!download || !download.localPath) {
-      console.error('[AlbumDetailScreen] No se encontró localPath para track:', trackId);
+    // Verificar que el track tenga localPath
+    if (!track.localPath) {
+      console.error('[AlbumDetailScreen] ⚠️ Track no tiene localPath:', track.title);
       return;
     }
+    
+    console.log('[AlbumDetailScreen] 🎵 Reproduciendo track local:', track.title, 'desde:', track.localPath);
 
     try {
       // Configurar audio
@@ -195,7 +169,7 @@ const AlbumDetailScreen = () => {
 
             // Crear y reproducir el sonido
       const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
-        { uri: download.localPath },
+        { uri: track.localPath },
         { shouldPlay: true }
       );
 

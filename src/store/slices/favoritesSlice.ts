@@ -122,6 +122,13 @@ export const correctFavoriteSource = (trackId: number, newSource: 'local' | 'str
 // Thunk para validar favoritos locales y eliminar los que no tienen archivo
 export const validateLocalFavorites = () => async (dispatch: any, getState: any) => {
   const { favorites } = getState();
+  
+  // Verificar que favorites.tracks existe y es un array
+  if (!favorites?.tracks || !Array.isArray(favorites.tracks)) {
+    console.log('[FavoritesSlice] ℹ️ No hay favoritos para validar');
+    return;
+  }
+  
   const localFavorites = favorites.tracks.filter((t: FavoriteTrack) => t.favoriteSource === 'local');
   
   if (localFavorites.length === 0) {
