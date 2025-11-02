@@ -355,6 +355,11 @@ const SearchScreen = () => {
   const setMiniPlayerVisible = playerContext.setMiniPlayerVisible;
   const fullPlayerVisible = playerContext.fullPlayerVisible;
   const setFullPlayerVisible = playerContext.setFullPlayerVisible;
+  const playNextTrack = playerContext.playNextTrack; // ✅ Agregar función centralizada
+  const queue = playerContext.queue;
+  const setQueue = playerContext.setQueue;
+  const currentIndex = playerContext.currentIndex;
+  const setCurrentIndex = playerContext.setCurrentIndex;
   
   const [playingTrackId, setPlayingTrackId] = useState<number | null>(null);
   const [isFullTrack, setIsFullTrack] = useState(false);
@@ -620,9 +625,10 @@ const SearchScreen = () => {
       newSound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded) {
           if (status.didJustFinish) {
+            console.log('[SearchScreen] 🎵 Track terminó, reproduciendo siguiente...');
             setPlayingTrackId(null);
             setIsPlaying(false);
-            setSound(null);
+            playNextTrack(); // ✅ Usar función centralizada
           } else {
             setIsPlaying(status.isPlaying);
           }

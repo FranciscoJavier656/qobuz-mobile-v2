@@ -1,0 +1,10 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -workspace ./qobuzmobilev2.xcworkspace -scheme qobuzmobilev2 -configuration Release -archivePath ./build/qobuzmobilev2.xcarchive archive CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+    CODE_SIGNING_REQUIRED = NO
+
+2025-11-02 11:03:27.604 xcodebuild[5591:37661] Writing error result bundle to /var/folders/d0/ltdgdwzd3z798qct_5n9zr880000gn/T/ResultBundle_2025-02-11_11-03-0027.xcresult
+xcodebuild: error: './qobuzmobilev2.xcworkspace' does not exist.
