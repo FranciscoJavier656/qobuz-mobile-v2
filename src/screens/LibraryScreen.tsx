@@ -1028,7 +1028,7 @@ const LibraryScreen = () => {
       // Obtener las tracks del álbum desde la API o local
       let tracks: any[] = [];
       
-      if (album.tracks && album.tracks.items && album.tracks.items.length > 0) {
+      if (album.tracks?.items && Array.isArray(album.tracks.items) && album.tracks.items.length > 0) {
         tracks = album.tracks.items;
       } else {
         console.log('[LibraryScreen] 📦 Álbum no tiene tracks, necesita descargarse o sincronizarse');
