@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import EqualizerService from '../../services/EqualizerService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -156,11 +157,22 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
 
   const loadEqSettings = async () => {
     try {
+      // Inicializar servicio de ecualizador
+      const initialized = await EqualizerService.initialize();
+      if (!initialized) {
+        console.log('[Equalizer] ⚠️ Servicio de ecualizador no disponible');
+      }
+
       const saved = await AsyncStorage.getItem('@eq_settings');
       if (saved) {
         const { values, preset } = JSON.parse(saved);
         setEqValues(values);
         setSelectedPreset(preset);
+        
+        // Aplicar valores al ecualizador del sistema
+        if (initialized) {
+          await EqualizerService.applyEqValues(values);
+        }
       }
     } catch (error) {
       console.log('[Equalizer] Error cargando ajustes:', error);
@@ -170,7 +182,11 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
   const saveEqSettings = async (values: number[], preset: string) => {
     try {
       await AsyncStorage.setItem('@eq_settings', JSON.stringify({ values, preset }));
-      console.log('[Equalizer] ✅ Ajustes guardados');
+      
+      // Aplicar al ecualizador del sistema
+      await EqualizerService.applyEqValues(values);
+      
+      console.log('[Equalizer] ✅ Ajustes guardados y aplicados');
     } catch (error) {
       console.log('[Equalizer] Error guardando ajustes:', error);
     }

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import EqualizerService from '../services/EqualizerService';
 
 export interface Track {
   id: number;
@@ -62,6 +63,30 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShuffleEnabled, setIsShuffleEnabled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
+
+  // Inicializar ecualizador al montar el componente
+  useEffect(() => {
+    const initEqualizer = async () => {
+      try {
+        const initialized = await EqualizerService.initialize();
+        if (initialized) {
+          // Cargar y aplicar configuración guardada
+          const saved = await AsyncStorage.getItem('@eq_settings');
+          if (saved) {
+            const { values } = JSON.parse(saved);
+            await EqualizerService.applyEqValues(values);
+            console.log('[PlayerContext] ✅ Ecualizador inicializado con configuración guardada');
+          } else {
+            console.log('[PlayerContext] ✅ Ecualizador inicializado con valores por defecto');
+          }
+        }
+      } catch (error) {
+        console.log('[PlayerContext] ⚠️ Error inicializando ecualizador:', error);
+      }
+    };
+
+    initEqualizer();
+  }, []);
 
   const addToQueue = (tracks: Track[]) => {
     setQueue(prevQueue => [...prevQueue, ...tracks]);
