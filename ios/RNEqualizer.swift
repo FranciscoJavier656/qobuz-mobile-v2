@@ -386,13 +386,3 @@ class RNEqualizer: NSObject {
         }
     }
 }
-            return
-        }
-        resolve(frequencies[bandIndex])
-    }
-    
-    @objc
-    static func requiresMainQueueSetup() -> Bool {
-        return true
-    }
-}
