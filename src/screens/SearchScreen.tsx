@@ -9,12 +9,14 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
-  SafeAreaView,
   Animated,
   PanResponder,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { useSelector, useDispatch } from 'react-redux';
+// expo-av está deprecado pero se mantiene temporalmente hasta migración completa
+// TODO: Migrar a expo-audio
 import { Audio } from 'expo-av';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';

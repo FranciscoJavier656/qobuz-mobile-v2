@@ -112,13 +112,36 @@ const convertDownloadsToItems = (downloadsList: any[]): LibraryItem[] => {
   return items;
 };
 
-// Selectores memoizados para evitar re-renders innecesarios
-const selectFavorites = (state: RootState) => state.favorites?.tracks ?? [];
-const selectAlbums = (state: RootState) => state.library?.albums ?? [];
-const selectArtists = (state: RootState) => state.library?.artists ?? [];
-const selectPlaylists = (state: RootState) => state.library?.playlists ?? [];
-const selectDownloads = (state: RootState) => state.download?.downloads ?? [];
-const selectRecentlyPlayed = (state: RootState) => state.library?.recentlyPlayed ?? [];
+// Selectores base memoizados para evitar re-renders innecesarios
+const selectFavorites = createSelector(
+  [(state: RootState) => state.favorites],
+  (favorites) => favorites?.tracks ?? []
+);
+
+const selectAlbums = createSelector(
+  [(state: RootState) => state.library],
+  (library) => library?.albums ?? []
+);
+
+const selectArtists = createSelector(
+  [(state: RootState) => state.library],
+  (library) => library?.artists ?? []
+);
+
+const selectPlaylists = createSelector(
+  [(state: RootState) => state.library],
+  (library) => library?.playlists ?? []
+);
+
+const selectDownloads = createSelector(
+  [(state: RootState) => state.download],
+  (download) => download?.downloads ?? []
+);
+
+const selectRecentlyPlayed = createSelector(
+  [(state: RootState) => state.library],
+  (library) => library?.recentlyPlayed ?? []
+);
 
 // Selectores memoizados con transformación
 const selectFavoriteItems = createSelector(
@@ -180,9 +203,47 @@ const selectPlaylistItems = createSelector(
   }
 );
 
+// Selector para tracks locales descargadas (extraídas de album.localTracks)
+const selectLocalTracks = createSelector(
+  [selectAlbums],
+  (albums) => {
+    const localTracks: Array<{ track: any; albumTitle: string; albumImage?: string }> = [];
+    
+    // Extraer todas las localTracks de todos los álbumes
+    albums.forEach(album => {
+      if (album.localTracks && Array.isArray(album.localTracks)) {
+        album.localTracks.forEach(track => {
+          localTracks.push({
+            track,
+            albumTitle: album.title,
+            albumImage: album.image?.large || album.image?.small,
+          });
+        });
+      }
+    });
+    
+    console.log('[LibraryScreen] 📥 Tracks locales encontradas:', localTracks.length);
+    
+    return localTracks;
+  }
+);
+
 const selectDownloadItems = createSelector(
-  [selectDownloads],
-  (downloads) => convertDownloadsToItems(downloads)
+  [selectLocalTracks],
+  (localTracks) => {
+    // Convertir tracks locales a LibraryItems
+    const items: LibraryItem[] = localTracks.map(({ track, albumTitle, albumImage }) => ({
+      id: `local-${track.id}`,
+      trackId: track.id.toString(),
+      title: track.title,
+      subtitle: `${track.performer?.name || 'Unknown Artist'} • ${albumTitle}`,
+      image: albumImage || track.album?.image?.large || track.album?.image?.small || 'https://via.placeholder.com/300',
+      type: 'track' as const,
+      track: track, // Incluir el track completo con localPath
+    }));
+    
+    return items;
+  }
 );
 
 // Componente separado para cada item (para poder usar hooks)
@@ -400,9 +461,6 @@ const LibraryScreen = () => {
   // Instancia de QobuzAPI
   const qobuzAPI = useRef(new QobuzAPI()).current;
 
-  // 🔧 SOLUCIÓN TEMPORAL: Estado local para downloads desde AsyncStorage
-  const [localDownloads, setLocalDownloads] = useState<any[]>([]);
-
   // Usar selectores memoizados para obtener datos ya transformados
   const favoriteItems = useSelector(selectFavoriteItems);
   const favoriteTracks = useSelector(selectFavorites); // Para acceder a los tracks con source
@@ -462,15 +520,11 @@ const LibraryScreen = () => {
       case 'playlists':
         return playlistItems;
       case 'downloads':
-        // BYPASS: Si Redux está vacío pero AsyncStorage tiene datos, usar AsyncStorage
-        if (downloadItems.length === 0 && localDownloads.length > 0) {
-          return convertDownloadsToItems(localDownloads);
-        }
         return downloadItems;
       default:
         return [];
     }
-  }, [activeTab, filteredFavoriteItems, albumItems, artistItems, playlistItems, downloadItems, localDownloads]);
+  }, [activeTab, filteredFavoriteItems, albumItems, artistItems, playlistItems, downloadItems]);
 
   const tabs: Array<{ id: LibraryTab; title: string; icon: string }> = [
     { id: 'favorites', title: 'Favoritos', icon: 'favorite' },
@@ -493,24 +547,6 @@ const LibraryScreen = () => {
     // NO ejecutar processExistingDownloads - ya no es necesario
     // Library se carga correctamente desde AsyncStorage
     // Las nuevas descargas se agregan automáticamente vía addMetadataFromTrackAsync
-    
-    // BYPASS Redux - Leer directamente de AsyncStorage
-    const loadDownloadsDirectly = async () => {
-      try {
-        const downloadsJson = await AsyncStorage.getItem('downloads');
-        if (downloadsJson) {
-          const downloads = JSON.parse(downloadsJson);
-          setLocalDownloads(downloads);
-        } else {
-          setLocalDownloads([]);
-        }
-      } catch (error) {
-        console.error('[LibraryScreen] Error cargando downloads:', error);
-        setLocalDownloads([]);
-      }
-    };
-    
-    loadDownloadsDirectly();
   }, [dispatch]);
 
   // Debug: Log de albums y artists cuando cambien
@@ -865,27 +901,30 @@ const LibraryScreen = () => {
     try {
       console.log('[LibraryScreen] handlePlayDownload called for itemId:', itemId);
       
-      // Buscar el download en localDownloads (bypass) o en Redux
-      const downloadsList = localDownloads.length > 0 ? localDownloads : downloadItems.map((item: any) => item.download || item);
+      // Buscar el item en downloadItems (ahora contiene tracks con localPath)
+      const downloadItem = downloadItems.find((item: any) => item.id === itemId);
       
-      // Buscar por download.id (no por track.id)
-      const download = downloadsList.find((d: any) => d.id === itemId);
-      
-      if (!download || !download.track) {
-        console.error('[LibraryScreen] Download not found for itemId:', itemId);
+      if (!downloadItem || !downloadItem.track) {
+        console.error('[LibraryScreen] Download item not found for itemId:', itemId);
         return;
       }
 
-      const track = download.track;
+      const track = downloadItem.track;
       const trackId = track.id.toString();
       
-      console.log('[LibraryScreen] Found download:', {
-        downloadId: download.id,
+      console.log('[LibraryScreen] Found download item:', {
+        itemId: downloadItem.id,
         trackId: trackId,
         title: track.title,
-        localPath: download.localPath,
-        status: download.status
+        localPath: track.localPath,
+        hasLocalPath: !!track.localPath
       });
+      
+      // Verificar que el track tenga localPath
+      if (!track.localPath) {
+        console.error('[LibraryScreen] Track does not have localPath:', track.title);
+        return;
+      }
 
       // Si es el mismo track, alternar play/pause
       if (currentTrack?.id.toString() === trackId && miniPlayerVisible) {
@@ -911,13 +950,13 @@ const LibraryScreen = () => {
       setFullPlayerVisible(false);
 
       // Los downloads siempre son locales
-      console.log('[LibraryScreen] Playing download from local file');
+      console.log('[LibraryScreen] Playing download from local file:', track.localPath);
       
-      // Crear un track con la URI local del download
+      // Crear un track con la URI local
       const trackWithLocalUri = {
         ...track,
-        localUri: download.localPath,
-        local_file_uri: download.localPath
+        localUri: track.localPath,
+        local_file_uri: track.localPath
       };
       
       await playLocalTrack(trackWithLocalUri);
