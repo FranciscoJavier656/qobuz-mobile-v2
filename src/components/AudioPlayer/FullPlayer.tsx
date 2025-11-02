@@ -980,7 +980,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
                               {playlist.name}
                             </Text>
                             <Text style={styles.playlistItemCount}>
-                              {playlist.tracks.length} {playlist.tracks.length === 1 ? 'canción' : 'canciones'}
+                              {playlist.tracks?.length || 0} {(playlist.tracks?.length || 0) === 1 ? 'canción' : 'canciones'}
                             </Text>
                           </View>
                         </View>
