@@ -124,23 +124,28 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
       });
       
     } else {
-      console.log('[Equalizer] 🎭 Cerrando con animación');
+      console.log('[Equalizer] 🎭 Cerrando con animación genie inversa');
       
-      // Cierre suave con efecto inverso
+      // Efecto genie inverso - se contrae y baja
       Animated.parallel([
-        Animated.timing(translateYAnim, {
-          toValue: SCREEN_HEIGHT * 0.3,
-          duration: 250,
+        // Baja hacia abajo con spring para rebote sutil
+        Animated.spring(translateYAnim, {
+          toValue: SCREEN_HEIGHT,
+          tension: 80,
+          friction: 10,
           useNativeDriver: true,
         }),
-        Animated.timing(scaleAnim, {
-          toValue: 0.85,
-          duration: 250,
+        // Se contrae suavemente (efecto de succión)
+        Animated.spring(scaleAnim, {
+          toValue: 0.7, // Se contrae más que al abrir (0.8)
+          tension: 80,
+          friction: 10,
           useNativeDriver: true,
         }),
+        // Fade out más rápido
         Animated.timing(opacityAnim, {
           toValue: 0,
-          duration: 250,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start(() => {
