@@ -5,7 +5,7 @@ import { Buffer } from 'buffer';
 
 interface AppSecretCache {
   secret: string;
-  expiry: number;
+  sessionId: string; // ID de sesión para detectar reinicios de app
 }
 
 export class QobuzAPI {
@@ -13,12 +13,14 @@ export class QobuzAPI {
   private BASE_URL: string;
   private userAuthToken: string | null;
   private appSecretCache: AppSecretCache | null = null;
-  private CACHE_TTL = 30 * 60 * 1000; // 30 minutos en milisegundos
+  private sessionId: string; // ID único de sesión
 
   constructor() {
     this.APP_ID = '798273057';
     this.BASE_URL = 'https://www.qobuz.com/api.json/0.2';
     this.userAuthToken = null;
+    // Generar ID único de sesión cuando se crea la instancia
+    this.sessionId = Date.now().toString() + Math.random().toString(36);
   }
 
   private getHeaders() {
@@ -256,11 +258,13 @@ export class QobuzAPI {
       console.log('[QobuzAPI] 🔑 App secret length:', appSecret.length, 'chars');
       console.log('[QobuzAPI] 🔑 App secret preview:', appSecret.substring(0, 10) + '...' + appSecret.substring(appSecret.length - 10));
       
-      // Guardar en caché
+      // Guardar en caché de sesión (válido hasta que se cierre la app)
       this.appSecretCache = {
         secret: appSecret,
-        expiry: Date.now() + this.CACHE_TTL
+        sessionId: this.sessionId
       };
+      
+      console.log('[QobuzAPI] 💾 App secret cached for current session');
       
       return appSecret;
       
@@ -272,15 +276,14 @@ export class QobuzAPI {
 
   // Obtiene el app_secret (desde caché o extracción dinámica)
   private async getAppSecret(): Promise<string> {
-    // Verificar caché primero
-    if (this.appSecretCache && this.appSecretCache.expiry > Date.now()) {
-      console.log('[QobuzAPI] ⚡ Using cached app_secret (valid for', 
-        Math.floor((this.appSecretCache.expiry - Date.now()) / 1000 / 60), 'more minutes)');
+    // Verificar si ya hay caché válido para esta sesión
+    if (this.appSecretCache && this.appSecretCache.sessionId === this.sessionId) {
+      console.log('[QobuzAPI] ⚡ Using cached app_secret from current session');
       return this.appSecretCache.secret;
     }
     
-    // Si no hay caché válido, extraer dinámicamente
-    console.log('[QobuzAPI] 🔄 Cache expired or empty, extracting new app_secret...');
+    // Si no hay caché válido, extraer dinámicamente (solo una vez por sesión)
+    console.log('[QobuzAPI] 🔄 No cached app_secret found, extracting for this session...');
     const dynamicSecret = await this.extractDynamicAppSecret();
     
     if (dynamicSecret) {
@@ -404,5 +407,19 @@ export class QobuzAPI {
 
   public getAuthToken(): string | null {
     return this.userAuthToken;
+  }
+
+  // Limpiar caché de app_secret (forzar nueva extracción en próxima llamada)
+  public clearAppSecretCache(): void {
+    console.log('[QobuzAPI] 🗑️ Clearing app_secret cache');
+    this.appSecretCache = null;
+  }
+
+  // Obtener información del caché actual
+  public getCacheInfo(): { isCached: boolean; sessionId: string | null } {
+    return {
+      isCached: this.appSecretCache !== null && this.appSecretCache.sessionId === this.sessionId,
+      sessionId: this.appSecretCache?.sessionId || null
+    };
   }
 }
