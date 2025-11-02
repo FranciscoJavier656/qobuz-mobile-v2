@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Track {
   id: number;
@@ -15,6 +16,8 @@ export interface Track {
     };
   };
   duration?: number;
+  localPath?: string;
+  local_file_uri?: string;
   [key: string]: any;
 }
 
@@ -38,6 +41,7 @@ interface PlayerContextType {
   setCurrentIndex: (index: number) => void;
   playNext: () => void;
   playPrevious: () => void;
+  playNextTrack: () => Promise<void>;
   isShuffleEnabled: boolean;
   setIsShuffleEnabled: (enabled: boolean) => void;
   repeatMode: 'off' | 'all' | 'one';
@@ -80,6 +84,136 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  // Función centralizada para reproducir el siguiente track automáticamente
+  const playNextTrack = useCallback(async () => {
+    console.log('[PlayerContext] 🎵 playNextTrack llamado');
+    console.log('[PlayerContext] Current index:', currentIndex);
+    console.log('[PlayerContext] Queue length:', queue.length);
+    console.log('[PlayerContext] Repeat mode:', repeatMode);
+
+    try {
+      // Detener y limpiar sonido actual
+      if (sound) {
+        try {
+          const status = await sound.getStatusAsync();
+          if (status.isLoaded) {
+            await sound.stopAsync();
+            await sound.unloadAsync();
+          }
+        } catch (error) {
+          console.log('[PlayerContext] Sound ya estaba detenido');
+        }
+        setSound(null);
+      }
+
+      // Determinar siguiente índice
+      let nextIndex = -1;
+      
+      if (repeatMode === 'one') {
+        // Repetir la misma canción
+        nextIndex = currentIndex;
+        console.log('[PlayerContext] 🔂 Repeat one: reproduciendo misma canción');
+      } else if (currentIndex < queue.length - 1) {
+        // Hay más canciones en la cola
+        nextIndex = currentIndex + 1;
+        console.log('[PlayerContext] ▶️ Siguiente canción en cola');
+      } else if (repeatMode === 'all' && queue.length > 0) {
+        // Volver al inicio si repeat all está activado
+        nextIndex = 0;
+        console.log('[PlayerContext] 🔁 Repeat all: volviendo al inicio');
+      } else {
+        // Fin de la cola
+        console.log('[PlayerContext] 🏁 Fin de la cola');
+        setIsPlaying(false);
+        return;
+      }
+
+      const nextTrack = queue[nextIndex];
+      if (!nextTrack) {
+        console.log('[PlayerContext] ❌ No se encontró siguiente track');
+        setIsPlaying(false);
+        return;
+      }
+
+      console.log('[PlayerContext] 🎵 Reproduciendo:', nextTrack.title);
+
+      // Buscar localPath
+      let localPath = nextTrack.localPath || nextTrack.local_file_uri;
+      
+      if (!localPath) {
+        try {
+          const libraryAlbumsJson = await AsyncStorage.getItem('@qobuz_library_albums');
+          if (libraryAlbumsJson) {
+            const albums = JSON.parse(libraryAlbumsJson);
+            for (const album of albums) {
+              if (album.localTracks) {
+                const track = album.localTracks.find((t: Track) => t.id === nextTrack.id);
+                if (track?.localPath) {
+                  localPath = track.localPath;
+                  break;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[PlayerContext] Error buscando localPath:', error);
+        }
+      }
+
+      if (!localPath) {
+        console.log('[PlayerContext] ❌ No localPath, saltando');
+        // Intentar siguiente canción
+        setCurrentIndex(nextIndex);
+        setTimeout(() => playNextTrack(), 100);
+        return;
+      }
+
+      // Crear y reproducir
+      const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
+        { uri: localPath },
+        { shouldPlay: true }
+      );
+
+      // Configurar callback recursivo para el siguiente track
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          setIsPlaying(status.isPlaying);
+          
+          if (status.didJustFinish) {
+            console.log('[PlayerContext] 🎵 Track terminó, reproduciendo siguiente...');
+            setIsPlaying(false);
+            playNextTrack();
+          }
+        }
+      });
+
+      setSound(newSound);
+      setCurrentTrack(nextTrack);
+      setCurrentIndex(nextIndex);
+
+      if (initialStatus.isLoaded) {
+        setIsPlaying(initialStatus.isPlaying);
+      }
+
+      // Verificar estado después de un momento
+      setTimeout(async () => {
+        try {
+          const currentStatus = await newSound.getStatusAsync();
+          if (currentStatus.isLoaded && currentStatus.isPlaying) {
+            setIsPlaying(true);
+          }
+        } catch (e) {
+          console.log('[PlayerContext] Error verificando estado:', e);
+        }
+      }, 200);
+
+    } catch (error) {
+      console.error('[PlayerContext] ❌ Error en playNextTrack:', error);
+      setIsPlaying(false);
+    }
+  }, [sound, currentIndex, queue, repeatMode]);
+
+
   return (
     <PlayerContext.Provider value={{ 
       fullPlayerVisible, 
@@ -101,6 +235,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setCurrentIndex,
       playNext,
       playPrevious,
+      playNextTrack,
       isShuffleEnabled,
       setIsShuffleEnabled,
       repeatMode,

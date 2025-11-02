@@ -447,6 +447,7 @@ const LibraryScreen = () => {
   const currentIndex = playerContext.currentIndex;
   const setCurrentIndex = playerContext.setCurrentIndex;
   const repeatMode = playerContext.repeatMode;
+  const playNextTrack = playerContext.playNextTrack; // ✅ Usar función centralizada
 
   // Estado de autenticación
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -705,7 +706,7 @@ const LibraryScreen = () => {
           if (status.didJustFinish) {
             console.log('[LibraryScreen] 🎵 Track terminó, reproduciendo siguiente...');
             setIsPlaying(false);
-            playNextInQueue();
+            playNextTrack(); // ✅ Usar función centralizada
           }
         }
       });
@@ -786,7 +787,7 @@ const LibraryScreen = () => {
           
           if (status.didJustFinish) {
             setIsPlaying(false);
-            playNextInQueue();
+            playNextTrack(); // ✅ Usar función centralizada
           }
         }
       });
@@ -1183,101 +1184,6 @@ const LibraryScreen = () => {
 
     } catch (error) {
       console.error('[LibraryScreen] ❌ Error in handlePlayArtist:', error);
-      setIsPlaying(false);
-    }
-  };
-
-  // Función para reproducir la siguiente canción en la cola
-  const playNextInQueue = async () => {
-    try {
-      console.log('[LibraryScreen] 🎵 playNextInQueue called');
-      console.log('[LibraryScreen] 🎵 Current queue length:', queue.length);
-      console.log('[LibraryScreen] 🎵 Current index:', currentIndex);
-      console.log('[LibraryScreen] 🎵 Repeat mode:', repeatMode);
-      
-      // Si repeatMode es 'one', repetir la misma canción
-      if (repeatMode === 'one' && currentTrack) {
-        console.log('[LibraryScreen] 🔁 Repitiendo canción actual');
-        const localPath = currentTrack.localPath || currentTrack.local_file_uri;
-        if (localPath) {
-          await playLocalTrack(currentTrack as any);
-        } else {
-          await playStreamingTrack(currentTrack);
-        }
-        return;
-      }
-      
-      if (currentIndex < queue.length - 1) {
-        const nextIndex = currentIndex + 1;
-        let nextTrack = queue[nextIndex];
-        
-        console.log('[LibraryScreen] 🎵 Playing next track:', nextTrack.title, `(${nextIndex + 1}/${queue.length})`);
-        
-        // Verificar si el track tiene URI local, si no, buscar en downloads
-        let localPath = nextTrack.localPath || nextTrack.local_file_uri;
-        
-        if (!localPath) {
-          console.log('[LibraryScreen] 📦 Buscando localPath en downloads para:', nextTrack.title);
-          try {
-            const downloadsJson = await AsyncStorage.getItem('downloads');
-            if (downloadsJson) {
-              const downloads = JSON.parse(downloadsJson);
-              const download = downloads.find((d: any) => d.track.id === nextTrack.id);
-              if (download && download.localPath) {
-                localPath = download.localPath;
-                console.log('[LibraryScreen] ✅ LocalPath encontrado:', localPath);
-                // Actualizar el track en la cola con el localPath
-                nextTrack = { ...nextTrack, localPath, local_file_uri: localPath };
-              }
-            }
-          } catch (error) {
-            console.error('[LibraryScreen] Error buscando localPath:', error);
-          }
-        }
-        
-        setCurrentIndex(nextIndex);
-        setCurrentTrack(nextTrack);
-        
-        if (localPath) {
-          console.log('[LibraryScreen] 🎵 Next track is local');
-          await playLocalTrack(nextTrack);
-        } else {
-          console.log('[LibraryScreen] 🎵 Next track is streaming');
-          await playStreamingTrack(nextTrack);
-        }
-      } else if (repeatMode === 'all' && queue.length > 0) {
-        // Si repeatMode es 'all', volver al inicio
-        console.log('[LibraryScreen] 🔁 Repeat all: volviendo al inicio');
-        let firstTrack = queue[0];
-        
-        // Buscar localPath si no existe
-        let localPath = firstTrack.localPath || firstTrack.local_file_uri;
-        if (!localPath) {
-          const downloadsJson = await AsyncStorage.getItem('downloads');
-          if (downloadsJson) {
-            const downloads = JSON.parse(downloadsJson);
-            const download = downloads.find((d: any) => d.track.id === firstTrack.id);
-            if (download && download.localPath) {
-              localPath = download.localPath;
-              firstTrack = { ...firstTrack, localPath, local_file_uri: localPath };
-            }
-          }
-        }
-        
-        setCurrentIndex(0);
-        setCurrentTrack(firstTrack);
-        
-        if (localPath) {
-          await playLocalTrack(firstTrack);
-        } else {
-          await playStreamingTrack(firstTrack);
-        }
-      } else {
-        console.log('[LibraryScreen] 🎵 Queue finished');
-        setIsPlaying(false);
-      }
-    } catch (error) {
-      console.error('[LibraryScreen] ❌ Error in playNextInQueue:', error);
       setIsPlaying(false);
     }
   };
