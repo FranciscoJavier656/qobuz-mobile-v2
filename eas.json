@@ -13,7 +13,16 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "simulator": false
+        "simulator": false,
+        "buildConfiguration": "Release"
+      }
+    },
+    "altstore": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Release",
+        "enterpriseProvisioning": "adhoc"
       }
     },
     "production": {
