@@ -748,9 +748,26 @@ const LibraryScreen = () => {
         throw new Error('No local URI found');
       }
 
-      // Asegurar que la URI esté correctamente codificada para espacios y caracteres especiales
-      const encodedUri = localUri.includes('%20') ? localUri : localUri.replace(/ /g, '%20');
-      console.log('[LibraryScreen] 🎵 Playing local track from:', encodedUri);
+      // Limpiar y normalizar la URI
+      let cleanUri = localUri;
+      
+      // Si ya tiene el prefijo file://, quitarlo temporalmente
+      const hasFilePrefix = cleanUri.startsWith('file://');
+      if (hasFilePrefix) {
+        cleanUri = cleanUri.replace('file://', '');
+      }
+      
+      // Decodificar cualquier encoding existente
+      cleanUri = decodeURIComponent(cleanUri);
+      
+      // Codificar solo los caracteres especiales (incluye espacios y caracteres como ñ, á, etc.)
+      cleanUri = encodeURI(cleanUri);
+      
+      // Restaurar el prefijo file://
+      const finalUri = hasFilePrefix ? `file://${cleanUri}` : cleanUri;
+      
+      console.log('[LibraryScreen] 🎵 URI original:', localUri);
+      console.log('[LibraryScreen] 🎵 URI codificada:', finalUri);
 
       // Si hay un sonido anterior, detenerlo
       if (sound) {
@@ -769,7 +786,7 @@ const LibraryScreen = () => {
       setIsLocalFile(true);
       
       const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
-        { uri: encodedUri },
+        { uri: finalUri },
         { shouldPlay: true }
       );
 

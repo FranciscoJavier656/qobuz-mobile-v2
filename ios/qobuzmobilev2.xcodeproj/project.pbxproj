@@ -11,6 +11,8 @@
 		196F93503A8C8FD6024F1017 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A52B133A5FC1F0B3E79BE31 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		5CFB37AB91A10618700C48FB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 931E1F80B46C08336C1CBE7B /* PrivacyInfo.xcprivacy */; };
+		92987E512EB81E1700A47510 /* RNEqualizer.m in Sources */ = {isa = PBXBuildFile; fileRef = 92987E4F2EB81E1700A47510 /* RNEqualizer.m */; };
+		92987E522EB81E1700A47510 /* RNEqualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92987E502EB81E1700A47510 /* RNEqualizer.swift */; };
 		9499EEBC74BC4B68F8E662AE /* libPods-qobuzmobilev2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3EB916EF413F1C4C63D52455 /* libPods-qobuzmobilev2.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
@@ -23,7 +25,9 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = qobuzmobilev2/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = qobuzmobilev2/Info.plist; sourceTree = "<group>"; };
 		3EB916EF413F1C4C63D52455 /* libPods-qobuzmobilev2.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-qobuzmobilev2.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		931E1F80B46C08336C1CBE7B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = qobuzmobilev2/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		92987E4F2EB81E1700A47510 /* RNEqualizer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNEqualizer.m; sourceTree = "<group>"; };
+		92987E502EB81E1700A47510 /* RNEqualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RNEqualizer.swift; sourceTree = "<group>"; };
+		931E1F80B46C08336C1CBE7B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = qobuzmobilev2/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = qobuzmobilev2/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -77,6 +81,8 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				92987E4F2EB81E1700A47510 /* RNEqualizer.m */,
+				92987E502EB81E1700A47510 /* RNEqualizer.swift */,
 				13B07FAE1A68108700A75B9A /* qobuzmobilev2 */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -128,7 +134,6 @@
 				F369365A48D227A8E6A97EE1 /* Pods-qobuzmobilev2.debug.xcconfig */,
 				1240792DD1FF522595F997C8 /* Pods-qobuzmobilev2.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -330,6 +335,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				92987E512EB81E1700A47510 /* RNEqualizer.m in Sources */,
+				92987E522EB81E1700A47510 /* RNEqualizer.swift in Sources */,
 				196F93503A8C8FD6024F1017 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
