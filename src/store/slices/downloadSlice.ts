@@ -169,33 +169,40 @@ export const autoScanDownloads = createAsyncThunk(
         return { syncedCount: 0, errorCount: 0 };
       }
       
-      // Cargar descargas existentes desde AsyncStorage
-      let existingDownloads: DownloadItem[] = [];
-      try {
-        const downloadsJson = await AsyncStorage.getItem('downloads');
-        if (downloadsJson) {
-          existingDownloads = JSON.parse(downloadsJson);
-        }
-      } catch (error) {
-        console.error('[autoScanDownloads] Error cargando descargas:', error);
-      }
+      // Importar librarySlice para agregar a Library
+      const { addMetadataFromTrackAsync } = await import('./librarySlice');
       
       // Importar QobuzAPI
       const { QobuzAPI } = await import('../../services/qobuz/QobuzAPI');
       const qobuzAPI = new QobuzAPI();
       qobuzAPI.setAuthToken(params.authToken);
       
+      // Obtener tracks ya procesados de Library para evitar duplicados
+      const state = getState() as { library: { albums: any[] } };
+      const existingTrackPaths = new Set<string>();
+      
+      // Recolectar todas las rutas de archivos ya en la biblioteca
+      state.library.albums.forEach((album: any) => {
+        if (album.localTracks && Array.isArray(album.localTracks)) {
+          album.localTracks.forEach((track: any) => {
+            if (track && track.localPath) {
+              existingTrackPaths.add(track.localPath);
+            }
+          });
+        }
+      });
+      
       let syncedCount = 0;
       let errorCount = 0;
       
-      // Procesar archivo por archivo Y GUARDAR INMEDIATAMENTE
+      // Procesar archivo por archivo y SOLO AGREGAR A LIBRARY
       for (const filename of files) {
         try {
           const filePath = `${downloadsDir}${filename}`;
           
-          // Verificar si ya existe
-          const alreadyExists = existingDownloads.some(d => d.localPath === filePath);
-          if (alreadyExists) {
+          // Verificar si ya existe en Library
+          if (existingTrackPaths.has(filePath)) {
+            console.log('[autoScanDownloads] ⏭️ Ya existe en Library:', filename);
             continue;
           }
           
@@ -217,66 +224,23 @@ export const autoScanDownloads = createAsyncThunk(
           
           if (searchResults && searchResults.length > 0) {
             const track = searchResults[0];
-            const extension = filename.toLowerCase().endsWith('.mp3') ? 'mp3' : 'flac';
-            const quality = extension === 'mp3' ? '5' : '27';
             
             console.log('[autoScanDownloads] ✅ Metadatos encontrados:', track.title);
             
-            // Obtener tamaño del archivo
-            let fileSize = 0;
-            try {
-              const fileInfo = await FileSystem.getInfoAsync(filePath);
-              if (fileInfo.exists && 'size' in fileInfo) {
-                fileSize = fileInfo.size;
-              }
-            } catch (error) {
-              console.error('[autoScanDownloads] ❌ Error obteniendo tamaño:', error);
-            }
+            // SOLO AGREGAR A LIBRARY (no a Downloads)
+            await dispatch(addMetadataFromTrackAsync(track));
             
-            // Crear DownloadItem
-            const downloadId = `synced-${track.id}-${Date.now()}`;
-            const now = Date.now();
-            
-            const newDownload: DownloadItem = {
-              id: downloadId,
-              track: track,
-              status: 'completed',
-              progress: 100,
-              downloadedBytes: fileSize,
-              totalBytes: fileSize,
-              speed: 0,
-              timeRemaining: 0,
-              quality: quality,
-              localPath: filePath,
-              addedAt: now,
-              startedAt: now,
-              completedAt: now,
-            };
-            
-            // AGREGAR A ARRAY Y GUARDAR INMEDIATAMENTE EN ASYNCSTORAGE
-            existingDownloads.push(newDownload);
-            await AsyncStorage.setItem('downloads', JSON.stringify(existingDownloads));
-            
-            console.log('[autoScanDownloads] � Guardado en AsyncStorage:', track.title, '- Total:', existingDownloads.length);
+            console.log('[autoScanDownloads] 📚 Agregado a Library:', track.title);
             
             syncedCount++;
           } else {
+            console.log('[autoScanDownloads] ❌ No se encontraron metadatos para:', filename);
             errorCount++;
           }
         } catch (error) {
           console.error('[autoScanDownloads] Error procesando', filename, ':', error);
           errorCount++;
         }
-      }
-      
-      // Recargar Redux si hay nuevos archivos
-      console.log('[autoScanDownloads] 🔄 Verificando si recargar Redux - syncedCount:', syncedCount);
-      if (syncedCount > 0) {
-        console.log('[autoScanDownloads] 🔄 Recargando Redux con', existingDownloads.length, 'descargas...');
-        await dispatch(loadDownloads());
-        console.log('[autoScanDownloads] ✅ Redux recargado');
-      } else {
-        console.log('[autoScanDownloads] ⏭️ No hay archivos nuevos, saltando recarga');
       }
       
       console.log('[autoScanDownloads] 📊 Resumen final: Sincronizados:', syncedCount, '| Errores:', errorCount);
