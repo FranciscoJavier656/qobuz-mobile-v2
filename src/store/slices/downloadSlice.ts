@@ -100,10 +100,13 @@ export const saveDownloads = createAsyncThunk(
       // Solo guardar descargas completadas para evitar inconsistencias
       const completedDownloads = state.download.downloads.filter(d => d.status === 'completed');
       
+      console.log('[saveDownloads] 💾 Guardando', completedDownloads.length, 'descargas completadas');
+      console.log('[saveDownloads] 📋 Tracks a guardar:', completedDownloads.map(d => d.track.title));
+      
       await AsyncStorage.setItem('downloads', JSON.stringify(completedDownloads));
       await AsyncStorage.setItem('downloads_stats', JSON.stringify(state.download.stats));
       
-      console.log('[downloadSlice] ✅ Descargas guardadas en AsyncStorage:', completedDownloads.length, 'tracks');
+      console.log('[saveDownloads] ✅ Descargas guardadas en AsyncStorage:', completedDownloads.length, 'tracks');
       return true;
     } catch (error) {
       console.error('[downloadSlice] ❌ Error guardando descargas:', error);
@@ -510,24 +513,16 @@ const downloadSlice = createSlice({
         });
         
         const { downloads, stats } = action.payload;
-        console.log('[downloadSlice] 🔵 Asignando al estado:', downloads.length, 'downloads');
+        console.log('[downloadSlice] 🔵 Recibidas desde AsyncStorage:', downloads.length, 'downloads');
         
-        // DEDUPLICAR: combinar descargas existentes con las cargadas, eliminando duplicados
-        // Usar localPath como identificador único ya que es más confiable que el ID
-        const existingMap = new Map(state.downloads.map(d => [d.localPath || d.id, d]));
-        const loadedMap = new Map(downloads.map((d: DownloadItem) => [d.localPath || d.id, d]));
-        
-        // Merge: priorizar las cargadas de AsyncStorage sobre las en memoria
-        const mergedMap = new Map([...existingMap, ...loadedMap]);
-        state.downloads = Array.from(mergedMap.values()) as any;
-        
-        console.log('[downloadSlice] 🔵 Después de deduplicar:', state.downloads.length, 'downloads únicos');
-        
+        // REEMPLAZAR completamente con las descargas de AsyncStorage
+        // Las descargas completadas están en AsyncStorage y son la fuente de verdad
+        state.downloads = downloads;
         state.stats = stats;
         
         console.log('[downloadSlice] 🔵 Estado DESPUÉS de actualizar:', {
           downloadsLength: state.downloads.length,
-          firstDownload: state.downloads[0]?.track?.title || 'N/A'
+          tracks: state.downloads.map(d => d.track.title).slice(0, 3)
         });
         console.log('[downloadSlice] ✅ Estado de descargas restaurado - Total en estado:', state.downloads.length);
         console.log('[downloadSlice] 🔵 ==================== FIN loadDownloads.fulfilled ====================');

@@ -107,22 +107,30 @@ export class DownloadQueueManager {
         // onComplete
         async (localPath) => {
           console.log(`[DownloadQueue] Descarga completada: ${download.track.title}`);
+          
+          // 1. Actualizar estado a completado (esto es síncrono en Redux)
           store.dispatch(setDownloadStatus({
             id: download.id,
             status: 'completed',
             localPath,
           }));
           
-          // Agregar metadatos del track a la biblioteca
+          // 2. Agregar metadatos del track a la biblioteca
           console.log('[DownloadQueue] Agregando metadatos a biblioteca...');
-          store.dispatch(addMetadataFromTrackAsync(download.track));
+          await store.dispatch(addMetadataFromTrackAsync(download.track));
           
-          // Guardar descargas en AsyncStorage Y recargar para actualizar UI
+          // 3. Pequeño delay para asegurar que el estado se propagó
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // 4. Guardar descargas en AsyncStorage (toma el estado actualizado)
           console.log('[DownloadQueue] Guardando descargas en AsyncStorage...');
           await store.dispatch(saveDownloads() as any);
           
+          // 5. Recargar para actualizar UI con todas las descargas
           console.log('[DownloadQueue] Recargando descargas desde AsyncStorage para actualizar UI...');
           await store.dispatch(loadDownloads() as any);
+          
+          console.log('[DownloadQueue] ✅ Descarga completada y sincronizada');
           
           this.currentDownloads--;
           this.processQueue(); // Procesar siguiente
