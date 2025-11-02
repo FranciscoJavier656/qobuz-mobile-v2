@@ -83,156 +83,64 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
   const [eqValues, setEqValues] = useState<number[]>(PRESETS.flat.values);
   const [selectedPreset, setSelectedPreset] = useState<string>('flat');
   
-  // Animaciones para efecto "genie" REAL estilo macOS - mucho más dramático
-  const [scaleYAnim] = useState(new Animated.Value(0.01)); // Casi invisible al inicio
-  const [scaleXAnim] = useState(new Animated.Value(0.05)); // Muy pequeño horizontalmente
-  const [translateYAnim] = useState(new Animated.Value(SCREEN_HEIGHT * 0.5)); // Desde la mitad inferior
+  // Animaciones con efecto genie SUTIL - sin cortar contenido
+  const [translateYAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
   const [opacityAnim] = useState(new Animated.Value(0));
-  const [skewYAnim] = useState(new Animated.Value(0)); // Para distorsión
-  const [widthAnim] = useState(new Animated.Value(0)); // Expansión de ancho
-  
-  // Animación en múltiples fases como macOS
-  const [phase1] = useState(new Animated.Value(0)); // Fase inicial de expansión
-  const [phase2] = useState(new Animated.Value(0)); // Fase de estiramiento
-  const [phase3] = useState(new Animated.Value(0)); // Fase de rebote
+  const [scaleAnim] = useState(new Animated.Value(0.8)); // Escala sutil
 
   useEffect(() => {
     if (visible) {
-      console.log('[Equalizer] 🎭 Iniciando animación GENIE');
+      console.log('[Equalizer] 🎭 Iniciando animación genie sutil');
       
       // Resetear valores
-      scaleYAnim.setValue(0.01);
-      scaleXAnim.setValue(0.05);
-      translateYAnim.setValue(SCREEN_HEIGHT * 0.5);
+      translateYAnim.setValue(SCREEN_HEIGHT);
       opacityAnim.setValue(0);
-      phase1.setValue(0);
-      phase2.setValue(0);
-      phase3.setValue(0);
+      scaleAnim.setValue(0.8);
       
       // Cargar valores guardados
       loadEqSettings();
       
-      // EFECTO GENIE REAL - Animación en 3 fases secuenciales
-      Animated.sequence([
-        // FASE 1: Aparición y expansión vertical dramática (0-200ms)
-        Animated.parallel([
-          Animated.timing(opacityAnim, {
-            toValue: 1,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.timing(phase1, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleYAnim, {
-            toValue: 0.6, // Se estira verticalmente primero
-            tension: 100,
-            friction: 10,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scaleXAnim, {
-            toValue: 0.3, // Sigue estrecho
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateYAnim, {
-            toValue: SCREEN_HEIGHT * 0.3,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]),
-        
-        // FASE 2: Expansión horizontal con distorsión (200-400ms)
-        Animated.parallel([
-          Animated.spring(scaleXAnim, {
-            toValue: 1.1, // Expansión horizontal dramática con overshoot
-            tension: 80,
-            friction: 7,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleYAnim, {
-            toValue: 0.95, // Se comprime un poco verticalmente
-            tension: 90,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-          Animated.timing(phase2, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.spring(translateYAnim, {
-            toValue: 0,
-            tension: 70,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]),
-        
-        // FASE 3: Rebote final y ajuste (400-550ms)
-        Animated.parallel([
-          Animated.spring(scaleXAnim, {
-            toValue: 1, // Vuelve al tamaño normal
-            tension: 100,
-            friction: 9,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleYAnim, {
-            toValue: 1, // Tamaño normal
-            tension: 100,
-            friction: 9,
-            useNativeDriver: true,
-          }),
-          Animated.timing(phase3, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-        ]),
+      // Animación genie sutil - escalado pequeño + slide up
+      Animated.parallel([
+        Animated.spring(translateYAnim, {
+          toValue: 0,
+          tension: 70,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 70,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
       ]).start(() => {
-        console.log('[Equalizer] ✅ Animación GENIE completada');
+        console.log('[Equalizer] ✅ Animación completada');
       });
       
     } else {
-      console.log('[Equalizer] 🎭 Cerrando con animación inversa');
+      console.log('[Equalizer] 🎭 Cerrando con animación');
       
-      // CIERRE: Efecto inverso - se contrae hacia el botón
+      // Cierre suave con efecto inverso
       Animated.parallel([
-        Animated.timing(scaleYAnim, {
-          toValue: 0.01,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleXAnim, {
-          toValue: 0.05,
-          duration: 300,
-          useNativeDriver: true,
-        }),
         Animated.timing(translateYAnim, {
-          toValue: SCREEN_HEIGHT * 0.6,
-          duration: 300,
+          toValue: SCREEN_HEIGHT * 0.3,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.85,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
           toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(phase1, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(phase2, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(phase3, {
-          toValue: 0,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -310,62 +218,27 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
         />
       </Animated.View>
 
-      {/* Contenedor principal con efecto "genie" - SIN escala que distorsione */}
+      {/* Contenedor principal con efecto genie sutil */}
       <Animated.View 
         style={[
           styles.container,
           {
             opacity: opacityAnim,
             transform: [
-              // Solo traslación vertical - sin escala para evitar cortes
               {
                 translateY: translateYAnim,
               },
-              // Perspectiva 3D
               {
-                perspective: 1500,
-              },
-              // Rotación en X para efecto de profundidad (sin afectar el tamaño)
-              {
-                rotateX: phase1.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['45deg', '15deg'],
-                }),
-              },
-              {
-                rotateX: phase2.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['15deg', '3deg'],
-                }),
-              },
-              {
-                rotateX: phase3.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['3deg', '0deg'],
-                }),
+                scale: scaleAnim, // Escala sutil 0.8 → 1.0 para efecto genie
               },
             ],
           }
         ]}
       >
-        <Animated.View
-          style={{
-            flex: 1,
-            transform: [
-              // Escala SOLO en el contenido interno, no en el contenedor principal
-              {
-                scaleY: scaleYAnim,
-              },
-              {
-                scaleX: scaleXAnim,
-              },
-            ],
-          }}
+        <LinearGradient
+          colors={['#0a0a0a', '#1a1a2e', '#16213e']}
+          style={styles.gradient}
         >
-          <LinearGradient
-            colors={['#0a0a0a', '#1a1a2e', '#16213e']}
-            style={styles.gradient}
-          >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
@@ -505,7 +378,6 @@ const Equalizer: React.FC<EqualizerProps> = ({ visible, onClose }) => {
             </Text>
           </View>
         </LinearGradient>
-        </Animated.View>
       </Animated.View>
     </Modal>
   );
