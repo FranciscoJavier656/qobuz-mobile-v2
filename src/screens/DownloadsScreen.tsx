@@ -26,39 +26,53 @@ import { usePlayerContext } from '../contexts/PlayerContext';
 // Selectores memoizados
 const selectDownloadsByStatus = createSelector(
   [(state: RootState) => state.download.downloads],
-  (downloads) => ({
-    downloading: downloads.filter(d => d.status === 'downloading'),
-    pending: downloads.filter(d => d.status === 'pending'),
-    completed: downloads.filter(d => d.status === 'completed'),
-    paused: downloads.filter(d => d.status === 'paused'),
-    error: downloads.filter(d => d.status === 'error'),
-  })
+  (downloads) => {
+    // SOLO mostrar descargas ACTIVAS de la sesión actual (no completadas de AsyncStorage)
+    const activeDownloads = downloads.filter((d: DownloadItem) => 
+      d.status === 'downloading' || 
+      d.status === 'pending' || 
+      d.status === 'paused' || 
+      d.status === 'error'
+    );
+    
+    return {
+      downloading: activeDownloads.filter((d: DownloadItem) => d.status === 'downloading'),
+      pending: activeDownloads.filter((d: DownloadItem) => d.status === 'pending'),
+      completed: [] as DownloadItem[], // NO mostrar completadas - van directo a Library
+      paused: activeDownloads.filter((d: DownloadItem) => d.status === 'paused'),
+      error: activeDownloads.filter((d: DownloadItem) => d.status === 'error'),
+    };
+  }
 );
 
 const selectDownloadStats = createSelector(
   [(state: RootState) => state.download as DownloadSliceState],
   (download: DownloadSliceState) => {
-    // CALCULAR estadísticas dinámicamente desde las descargas actuales
     const downloads = download.downloads ?? [];
     
-    // Solo contar descargas con status === 'completed'
-    const completedDownloads = downloads.filter(d => d.status === 'completed');
-    const errorDownloads = downloads.filter(d => d.status === 'error');
-    const activeDownloads = downloads.filter(d => 
+    // SOLO contar descargas ACTIVAS de la sesión (no completadas de AsyncStorage)
+    const activeDownloads = downloads.filter((d: DownloadItem) => 
+      d.status === 'downloading' || 
+      d.status === 'pending' || 
+      d.status === 'paused' || 
+      d.status === 'error'
+    );
+    
+    const errorDownloads = activeDownloads.filter((d: DownloadItem) => d.status === 'error');
+    const downloadingOrPending = activeDownloads.filter((d: DownloadItem) => 
       d.status === 'downloading' || d.status === 'pending'
     );
     
-    // Calcular tamaño total SOLO de descargas completadas
-    // Usar totalBytes para descargas completadas (tamaño final del archivo)
-    const totalSize = completedDownloads.reduce((sum, d) => {
+    // Calcular tamaño total SOLO de descargas activas en progreso
+    const totalSize = downloadingOrPending.reduce((sum, d) => {
       const size = d.totalBytes || 0;
       return sum + size;
     }, 0);
     
     return {
-      totalDownloads: downloads.length,
-      activeDownloads: activeDownloads.length,
-      completedDownloads: completedDownloads.length,
+      totalDownloads: activeDownloads.length,
+      activeDownloads: downloadingOrPending.length,
+      completedDownloads: 0, // NO mostrar completadas - están en Library
       totalSize: totalSize,
       errors: errorDownloads.length,
     };
@@ -194,7 +208,7 @@ const DownloadsScreen = () => {
     console.log('[DownloadsScreen] 🎯 filteredDownloads calculado:', {
       filter,
       count: result.length,
-      tracks: result.map(d => d.track.title)
+      tracks: result.map((d: DownloadItem) => d.track.title)
     });
     
     return result;

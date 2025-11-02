@@ -141,12 +141,13 @@ const AppNavigator = () => {
         // Cargar biblioteca (albums, artists, playlists)
         await dispatch(loadLibrary() as any);
         
-        // Cargar descargas y escanear archivos
-        await dispatch(loadDownloads());
+        // NO cargar downloads al inicio - Downloads screen solo debe mostrar descargas de la sesión actual
+        // await dispatch(loadDownloads());
         
-        if (savedToken) {
-          await dispatch(autoScanDownloads({ authToken: savedToken }) as any);
-        }
+        // NO ejecutar autoScan al inicio - esto agregaba todos los archivos como "downloads"
+        // if (savedToken) {
+        //   await dispatch(autoScanDownloads({ authToken: savedToken }) as any);
+        // }
       } catch (error) {
         console.error('[AppNavigator] Error cargando auth:', error);
       } finally {

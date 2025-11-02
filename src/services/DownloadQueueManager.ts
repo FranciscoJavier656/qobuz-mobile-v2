@@ -4,11 +4,13 @@ import {
   updateDownloadProgress,
   setDownloadStatus,
   startDownload as startDownloadAction,
+  removeDownload,
   type DownloadItem,
   saveDownloads,
   loadDownloads,
 } from '../store/slices/downloadSlice';
 import { addMetadataFromTrackAsync } from '../store/slices/librarySlice';
+import type { RootState } from '../store';
 
 /**
  * Gestor de cola de descargas
@@ -63,7 +65,7 @@ export class DownloadQueueManager {
   private async processQueue() {
     if (this.isProcessing) return;
 
-    const state = store.getState();
+    const state = store.getState() as RootState;
     const { downloads, settings } = state.download;
 
     // Obtener descargas pendientes
@@ -107,31 +109,17 @@ export class DownloadQueueManager {
         },
         // onComplete
         async (localPath) => {
-          console.log(`[DownloadQueue] Descarga completada: ${download.track.title}`);
+          console.log(`[DownloadQueue] ✅ Descarga completada: ${download.track.title}`);
           
-          // 1. Actualizar estado a completado (esto es síncrono en Redux)
-          store.dispatch(setDownloadStatus({
-            id: download.id,
-            status: 'completed',
-            localPath,
-          }));
-          
-          // 2. Agregar metadatos del track a la biblioteca
-          console.log('[DownloadQueue] Agregando metadatos a biblioteca...');
+          // 1. Agregar metadatos del track a la biblioteca
+          console.log('[DownloadQueue] 📚 Agregando a Library...');
           await store.dispatch(addMetadataFromTrackAsync(download.track));
           
-          // 3. Pequeño delay para asegurar que el estado se propagó
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // 2. ELIMINAR de Downloads (ya está en Library, no necesitamos mostrarla en Downloads)
+          console.log('[DownloadQueue] 🗑️ Removiendo de Downloads (ya en Library)...');
+          store.dispatch(removeDownload(download.id));
           
-          // 4. Guardar descargas en AsyncStorage (toma el estado actualizado)
-          console.log('[DownloadQueue] Guardando descargas en AsyncStorage...');
-          await store.dispatch(saveDownloads() as any);
-          
-          // 5. Recargar para actualizar UI con todas las descargas
-          console.log('[DownloadQueue] Recargando descargas desde AsyncStorage para actualizar UI...');
-          await store.dispatch(loadDownloads());
-          
-          console.log('[DownloadQueue] ✅ Descarga completada y sincronizada');
+          console.log('[DownloadQueue] ✅ Track agregado a Library y removido de Downloads');
           
           this.currentDownloads--;
           this.processQueue(); // Procesar siguiente
@@ -179,7 +167,7 @@ export class DownloadQueueManager {
    */
   public async resumeDownload(downloadId: string) {
     try {
-      const state = store.getState();
+      const state = store.getState() as RootState;
       const download = state.download.downloads.find((d: DownloadItem) => d.id === downloadId);
       
       if (!download) return;
