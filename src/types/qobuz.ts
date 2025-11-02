@@ -31,6 +31,7 @@ export interface Album {
   release_date_original?: string;
   tracks_count?: number;
   duration?: number;
+  localTracks?: Track[]; // Array de tracks descargadas localmente
 }
 
 export interface Artist {

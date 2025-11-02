@@ -359,15 +359,12 @@ const librarySlice = createSlice({
     // Agregar metadatos desde track descargado
     addMetadataFromTrack: (state, action: PayloadAction<Track>) => {
       const track = action.payload;
-      // console.log('[LibrarySlice] 🔍 Procesando track:', track.title);
-      // console.log('[LibrarySlice] 🔍 Track completo:', JSON.stringify(track, null, 2));
       
       // Variable para rastrear si se agregó un álbum nuevo
       let albumWasAdded = false;
       
       // Agregar álbum si existe y tiene título
       if (track.album?.title) {
-        // console.log('[LibrarySlice] 📀 Procesando álbum:', track.album.title);
         // Generar ID numérico basado en hash del título del álbum
         const albumIdStr = `${track.album.title}-${track.performer?.name || 'unknown'}`;
         const albumId = Math.abs(albumIdStr.split('').reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0));
@@ -381,11 +378,26 @@ const librarySlice = createSlice({
             image: track.album.image,
             tracks_count: 1,
             duration: track.duration,
+            localTracks: [track], // Inicializar con la primera track
           };
           state.albums.unshift(newAlbum);
           albumWasAdded = true;
           console.log('[LibrarySlice] ✅ Album agregado:', newAlbum.title);
-          // console.log('[LibrarySlice] 📊 Total álbumes en biblioteca:', state.albums.length);
+        } else {
+          // Álbum existe - agregar track al array localTracks si no existe ya
+          if (!albumExists.localTracks) {
+            albumExists.localTracks = [];
+          }
+          
+          // Verificar si la track ya está en el álbum
+          const trackExists = albumExists.localTracks.find(t => t.id === track.id);
+          if (!trackExists) {
+            albumExists.localTracks.push(track);
+            albumExists.tracks_count = albumExists.localTracks.length;
+            console.log('[LibrarySlice] ✅ Track agregada al álbum existente:', track.title, '→', albumExists.title, `(${albumExists.tracks_count} tracks)`);
+          } else {
+            console.log('[LibrarySlice] ⚠️ Track ya existe en álbum:', track.title);
+          }
         }
       }
       
