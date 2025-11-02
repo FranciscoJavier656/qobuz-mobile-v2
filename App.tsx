@@ -8,7 +8,13 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
+
+// Suprimir warnings conocidos temporalmente
+LogBox.ignoreLogs([
+  '[expo-av]: Expo AV has been deprecated', // TODO: Migrar a expo-audio
+  'SafeAreaView has been deprecated', // Ya migrado a react-native-safe-area-context
+]);
 
 // Store
 import store from './src/store';
