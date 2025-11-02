@@ -86,14 +86,16 @@ const convertPlaylistsToItems = (playlistsList: any[]): LibraryItem[] => {
   if (playlistsList.length > 0) {
     console.log('[LibraryScreen] 🎵 Primera playlist:', playlistsList[0]);
   }
-  return playlistsList.map(playlist => ({
-    id: playlist.id,
-    title: playlist.name,
-    subtitle: `${playlist.tracks.length} canciones`,
-    image: playlist.tracks[0]?.album?.image?.large || 'https://via.placeholder.com/300',
-    type: 'playlist' as const,
-    count: playlist.tracks.length,
-  }));
+  return playlistsList
+    .filter(playlist => playlist.tracks && Array.isArray(playlist.tracks)) // Filtrar playlists sin tracks válidos
+    .map(playlist => ({
+      id: playlist.id,
+      title: playlist.name,
+      subtitle: `${playlist.tracks.length} canciones`,
+      image: playlist.tracks[0]?.album?.image?.large || 'https://via.placeholder.com/300',
+      type: 'playlist' as const,
+      count: playlist.tracks.length,
+    }));
 };
 
 const convertDownloadsToItems = (downloadsList: any[]): LibraryItem[] => {
