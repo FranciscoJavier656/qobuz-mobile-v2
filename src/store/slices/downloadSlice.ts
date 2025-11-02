@@ -511,7 +511,18 @@ const downloadSlice = createSlice({
         
         const { downloads, stats } = action.payload;
         console.log('[downloadSlice] 🔵 Asignando al estado:', downloads.length, 'downloads');
-        state.downloads = downloads;
+        
+        // DEDUPLICAR: combinar descargas existentes con las cargadas, eliminando duplicados
+        // Usar localPath como identificador único ya que es más confiable que el ID
+        const existingMap = new Map(state.downloads.map(d => [d.localPath || d.id, d]));
+        const loadedMap = new Map(downloads.map((d: DownloadItem) => [d.localPath || d.id, d]));
+        
+        // Merge: priorizar las cargadas de AsyncStorage sobre las en memoria
+        const mergedMap = new Map([...existingMap, ...loadedMap]);
+        state.downloads = Array.from(mergedMap.values()) as any;
+        
+        console.log('[downloadSlice] 🔵 Después de deduplicar:', state.downloads.length, 'downloads únicos');
+        
         state.stats = stats;
         
         console.log('[downloadSlice] 🔵 Estado DESPUÉS de actualizar:', {

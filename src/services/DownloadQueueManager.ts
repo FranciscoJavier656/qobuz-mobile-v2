@@ -6,7 +6,7 @@ import {
   startDownload as startDownloadAction,
   type DownloadItem,
 } from '../slices/downloadSlice';
-import { saveDownloads } from '../store/slices/downloadSlice';
+import { saveDownloads, loadDownloads } from '../store/slices/downloadSlice';
 import { addMetadataFromTrackAsync } from '../store/slices/librarySlice';
 
 /**
@@ -105,7 +105,7 @@ export class DownloadQueueManager {
           }));
         },
         // onComplete
-        (localPath) => {
+        async (localPath) => {
           console.log(`[DownloadQueue] Descarga completada: ${download.track.title}`);
           store.dispatch(setDownloadStatus({
             id: download.id,
@@ -117,9 +117,12 @@ export class DownloadQueueManager {
           console.log('[DownloadQueue] Agregando metadatos a biblioteca...');
           store.dispatch(addMetadataFromTrackAsync(download.track));
           
-          // Guardar descargas en AsyncStorage
+          // Guardar descargas en AsyncStorage Y recargar para actualizar UI
           console.log('[DownloadQueue] Guardando descargas en AsyncStorage...');
-          store.dispatch(saveDownloads() as any);
+          await store.dispatch(saveDownloads() as any);
+          
+          console.log('[DownloadQueue] Recargando descargas desde AsyncStorage para actualizar UI...');
+          await store.dispatch(loadDownloads() as any);
           
           this.currentDownloads--;
           this.processQueue(); // Procesar siguiente
