@@ -12,7 +12,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 // Store
 import store from './src/store';
-import type { RootState } from './src/store';
+import type { RootState, AppDispatch } from './src/store';
 import { setUser, setToken } from './src/store/slices/authSlice';
 import { loadFavorites, validateLocalFavorites } from './src/store/slices/favoritesSlice';
 import { loadDownloads, autoScanDownloads } from './src/store/slices/downloadSlice';
@@ -43,6 +43,9 @@ import { useSelector, useDispatch } from 'react-redux';
 
 // Context
 import { PlayerProvider, usePlayerContext } from './src/contexts/PlayerContext';
+
+// Typed hooks
+const useAppDispatch = () => useDispatch<AppDispatch>();
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -112,7 +115,7 @@ const MainTabs = () => {
 };
 
 const AppNavigator = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const authToken = useSelector((state: RootState) => state.auth.token);
   const user = useSelector((state: RootState) => state.auth.user);
@@ -139,7 +142,7 @@ const AppNavigator = () => {
         await dispatch(loadLibrary() as any);
         
         // Cargar descargas y escanear archivos
-        await dispatch(loadDownloads() as any);
+        await dispatch(loadDownloads());
         
         if (savedToken) {
           await dispatch(autoScanDownloads({ authToken: savedToken }) as any);

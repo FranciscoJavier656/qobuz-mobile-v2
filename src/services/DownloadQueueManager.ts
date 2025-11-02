@@ -128,7 +128,7 @@ export class DownloadQueueManager {
           
           // 5. Recargar para actualizar UI con todas las descargas
           console.log('[DownloadQueue] Recargando descargas desde AsyncStorage para actualizar UI...');
-          await store.dispatch(loadDownloads() as any);
+          await store.dispatch(loadDownloads());
           
           console.log('[DownloadQueue] ✅ Descarga completada y sincronizada');
           

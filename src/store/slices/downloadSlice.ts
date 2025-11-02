@@ -558,6 +558,9 @@ const downloadSlice = createSlice({
         console.log('[downloadSlice] ⏳ loadDownloads.pending - Iniciando carga...');
       })
       .addCase(loadDownloads.fulfilled, (state, action) => {
+        console.log('=================================================');
+        console.log('🚨🚨🚨 REDUCER loadDownloads.fulfilled EJECUTÁNDOSE 🚨🚨🚨');
+        console.log('=================================================');
         console.log('[downloadSlice] 🔵 ==================== loadDownloads.fulfilled EJECUTÁNDOSE ====================');
         console.log('[downloadSlice] 🔵 Payload recibido:', JSON.stringify(action.payload, null, 2));
         console.log('[downloadSlice] 🔵 Estado ANTES de actualizar:', {
