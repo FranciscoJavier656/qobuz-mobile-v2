@@ -22,6 +22,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { createSelector } from '@reduxjs/toolkit';
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import type { RootState, AppDispatch } from '../store';
 import { removeFromFavorites, correctFavoriteSource } from '../store/slices/favoritesSlice';
 import { loadLibrary, processExistingDownloads } from '../store/slices/librarySlice';
@@ -736,7 +737,7 @@ const LibraryScreen = () => {
   const playLocalTrack = async (track: Track) => {
     try {
       // Verificar si el track tiene una URI local (múltiples formatos posibles)
-      const localUri = (track as any).localPath || (track as any).localUri || (track as any).local_file_uri;
+      let localUri = (track as any).localPath || (track as any).localUri || (track as any).local_file_uri;
       
       if (!localUri) {
         console.error('[LibraryScreen] ❌ No local URI found for track:', track.title);
@@ -750,7 +751,30 @@ const LibraryScreen = () => {
       }
 
       console.log('[LibraryScreen] 🎵 Usando reproductor nativo para:', track.title);
-      console.log('[LibraryScreen] 🎵 URI:', localUri);
+      console.log('[LibraryScreen] 🎵 URI original:', localUri);
+
+      // Extraer solo el nombre del archivo del URI antiguo
+      // En caso de que el Application ID haya cambiado después de reinstalar la app
+      const fileName = localUri.split('/').pop() || '';
+      const decodedFileName = decodeURIComponent(fileName);
+      
+      // Construir nuevo path basado en el directorio actual de documentos
+      const downloadsDir = `${FileSystem.documentDirectory}downloads/`;
+      const newLocalUri = `${downloadsDir}${decodedFileName}`;
+      
+      console.log('[LibraryScreen] 📁 Archivo:', decodedFileName);
+      console.log('[LibraryScreen] 📂 Verificando existencia del archivo...');
+      
+      // Verificar si el archivo existe en el path reconstruido
+      const fileInfo = await FileSystem.getInfoAsync(newLocalUri);
+      
+      if (!fileInfo.exists) {
+        console.error('[LibraryScreen] ❌ Archivo no encontrado:', newLocalUri);
+        throw new Error(`Archivo no encontrado: ${decodedFileName}`);
+      }
+      
+      console.log('[LibraryScreen] ✅ Archivo encontrado:', fileInfo.size, 'bytes');
+      localUri = newLocalUri; // Usar el path correcto
 
       // Detener cualquier reproducción anterior
       if (sound) {
