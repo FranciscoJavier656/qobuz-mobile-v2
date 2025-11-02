@@ -28,7 +28,8 @@ class EqualizerService {
       const Equalizer = NativeModules.Equalizer as EqualizerModule;
       
       if (!Equalizer) {
-        console.log('[EqualizerService] ⚠️ Módulo de ecualizador no disponible');
+        console.log('[EqualizerService] ❌ Módulo nativo de ecualizador no disponible');
+        console.log('[EqualizerService] 💡 Asegúrate de ejecutar: npx expo run:ios');
         return false;
       }
 
