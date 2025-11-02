@@ -221,6 +221,14 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (status.isLoaded) {
         setIsPlaying(status.isPlaying);
         
+        // Log detallado para debugging
+        if (status.positionMillis && status.durationMillis) {
+          const progress = (status.positionMillis / status.durationMillis) * 100;
+          if (progress > 95) {
+            console.log('[PlayerContext] 🔄 Cerca del final:', progress.toFixed(1) + '%');
+          }
+        }
+        
         if (status.didJustFinish) {
           console.log('[PlayerContext] 🎵 Track terminó, reproduciendo siguiente...');
           setIsPlaying(false);

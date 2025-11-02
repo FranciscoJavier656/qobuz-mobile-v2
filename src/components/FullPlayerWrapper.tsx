@@ -19,6 +19,7 @@ const FullPlayerWrapper: React.FC = () => {
     setCurrentIndex,
     playNext,
     playPrevious,
+    playNextTrack,
     setCurrentTrack,
     isShuffleEnabled,
     setIsShuffleEnabled,
@@ -50,10 +51,8 @@ const FullPlayerWrapper: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (currentIndex < queue.length - 1) {
-      console.log('[FullPlayerWrapper] 🎵 Next track');
-      playNext();
-    }
+    console.log('[FullPlayerWrapper] 🎵 Next track - usando playNextTrack()');
+    playNextTrack();
   };
 
   const handlePrevious = () => {
@@ -114,7 +113,7 @@ const FullPlayerWrapper: React.FC = () => {
       isLocalFile={isLocalFile}
       queue={queue}
       onQueueUpdate={setQueue}
-      onNext={queue.length > 0 && currentIndex < queue.length - 1 ? handleNext : undefined}
+      onNext={handleNext}
       onPrevious={queue.length > 0 && currentIndex > 0 ? handlePrevious : undefined}
       isShuffleEnabled={isShuffleEnabled}
       onShuffleToggle={handleShuffleToggle}

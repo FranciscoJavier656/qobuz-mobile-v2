@@ -27,6 +27,7 @@ import type { Track } from '../../services/qobuz/types';
 import type { RootState } from '../../store/store';
 import { addToFavorites, removeFromFavorites } from '../../store/slices/favoritesSlice';
 import { createPlaylist, addTrackToPlaylist } from '../../store/slices/librarySlice';
+import Equalizer from './Equalizer'; // ✨ Importar ecualizador
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const QUEUE_PANEL_HEIGHT = SCREEN_HEIGHT * 0.6;
@@ -80,6 +81,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const [isBuffering, setIsBuffering] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [showEqualizer, setShowEqualizer] = useState(false); // ✨ Estado para ecualizador
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSeeking, setIsSeeking] = useState(false);
@@ -209,6 +211,15 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     // Usar el callback nativo en lugar de polling con setInterval
     // Esto es MUCHO más eficiente y no bloquea el hilo de JS
     const onPlaybackStatusUpdate = (status: any) => {
+      // Primero verificar si la canción terminó
+      if (status.isLoaded && status.didJustFinish) {
+        console.log('[FullPlayer] 🎵 Track terminó, llamando onNext');
+        if (onNext) {
+          onNext();
+        }
+        return;
+      }
+      
       // No actualizar si estamos en medio de una animación o no es visible
       if (isAnimating.current || !visible) return;
       
@@ -786,6 +797,21 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
                 />
               </BlurView>
             </TouchableOpacity>
+
+            {/* ✨ Botón del Ecualizador */}
+            <TouchableOpacity 
+              style={styles.iconButton} 
+              activeOpacity={0.7}
+              onPress={() => setShowEqualizer(true)}
+            >
+              <BlurView intensity={25} tint="dark" style={styles.iconButtonBlur}>
+                <Icon 
+                  name="graphic-eq" 
+                  size={24} 
+                  color="#e94560" 
+                />
+              </BlurView>
+            </TouchableOpacity>
           </View>
 
           {/* Error Message */}
@@ -994,6 +1020,12 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           </BlurView>
         </View>
       </Modal>
+
+      {/* Equalizer Modal */}
+      <Equalizer
+        visible={showEqualizer}
+        onClose={() => setShowEqualizer(false)}
+      />
     </Animated.View>
   );
 };
