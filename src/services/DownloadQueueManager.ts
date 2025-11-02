@@ -119,11 +119,15 @@ export class DownloadQueueManager {
           };
           await store.dispatch(addMetadataFromTrackAsync(trackWithLocalPath));
           
-          // 2. ELIMINAR de Downloads (ya está en Library, no necesitamos mostrarla en Downloads)
-          console.log('[DownloadQueue] 🗑️ Removiendo de Downloads (ya en Library)...');
-          store.dispatch(removeDownload(download.id));
+          // 2. Marcar como completada (se mantiene en Downloads hasta que usuario la elimine)
+          console.log('[DownloadQueue] ✅ Marcando descarga como completada...');
+          store.dispatch(setDownloadStatus({
+            id: download.id,
+            status: 'completed',
+            localPath: localPath, // Guardar localPath en el download
+          }));
           
-          console.log('[DownloadQueue] ✅ Track agregado a Library y removido de Downloads');
+          console.log('[DownloadQueue] ✅ Track agregado a Library y marcado como completado en Downloads');
           
           this.currentDownloads--;
           this.processQueue(); // Procesar siguiente

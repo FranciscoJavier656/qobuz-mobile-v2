@@ -27,20 +27,13 @@ import { usePlayerContext } from '../contexts/PlayerContext';
 const selectDownloadsByStatus = createSelector(
   [(state: RootState) => state.download.downloads],
   (downloads) => {
-    // SOLO mostrar descargas ACTIVAS de la sesión actual (no completadas de AsyncStorage)
-    const activeDownloads = downloads.filter((d: DownloadItem) => 
-      d.status === 'downloading' || 
-      d.status === 'pending' || 
-      d.status === 'paused' || 
-      d.status === 'error'
-    );
-    
+    // Mostrar todas las descargas incluyendo completadas
     return {
-      downloading: activeDownloads.filter((d: DownloadItem) => d.status === 'downloading'),
-      pending: activeDownloads.filter((d: DownloadItem) => d.status === 'pending'),
-      completed: [] as DownloadItem[], // NO mostrar completadas - van directo a Library
-      paused: activeDownloads.filter((d: DownloadItem) => d.status === 'paused'),
-      error: activeDownloads.filter((d: DownloadItem) => d.status === 'error'),
+      downloading: downloads.filter((d: DownloadItem) => d.status === 'downloading'),
+      pending: downloads.filter((d: DownloadItem) => d.status === 'pending'),
+      completed: downloads.filter((d: DownloadItem) => d.status === 'completed'),
+      paused: downloads.filter((d: DownloadItem) => d.status === 'paused'),
+      error: downloads.filter((d: DownloadItem) => d.status === 'error'),
     };
   }
 );
@@ -50,29 +43,22 @@ const selectDownloadStats = createSelector(
   (download: DownloadSliceState) => {
     const downloads = download.downloads ?? [];
     
-    // SOLO contar descargas ACTIVAS de la sesión (no completadas de AsyncStorage)
-    const activeDownloads = downloads.filter((d: DownloadItem) => 
-      d.status === 'downloading' || 
-      d.status === 'pending' || 
-      d.status === 'paused' || 
-      d.status === 'error'
-    );
-    
-    const errorDownloads = activeDownloads.filter((d: DownloadItem) => d.status === 'error');
-    const downloadingOrPending = activeDownloads.filter((d: DownloadItem) => 
+    const errorDownloads = downloads.filter((d: DownloadItem) => d.status === 'error');
+    const completedDownloads = downloads.filter((d: DownloadItem) => d.status === 'completed');
+    const downloadingOrPending = downloads.filter((d: DownloadItem) => 
       d.status === 'downloading' || d.status === 'pending'
     );
     
-    // Calcular tamaño total SOLO de descargas activas en progreso
+    // Calcular tamaño total de descargas activas en progreso
     const totalSize = downloadingOrPending.reduce((sum, d) => {
       const size = d.totalBytes || 0;
       return sum + size;
     }, 0);
     
     return {
-      totalDownloads: activeDownloads.length,
+      totalDownloads: downloads.length,
       activeDownloads: downloadingOrPending.length,
-      completedDownloads: 0, // NO mostrar completadas - están en Library
+      completedDownloads: completedDownloads.length,
       totalSize: totalSize,
       errors: errorDownloads.length,
     };
@@ -437,17 +423,17 @@ const DownloadsScreen = () => {
             </Text>
           </View>
           
-          {stats.totalDownloads > 0 && (
+          {stats.completedDownloads > 0 && (
             <TouchableOpacity
               style={styles.clearButton}
-              onPress={() => dispatch(clearAll())}
+              onPress={() => dispatch(clearCompleted())}
             >
               <LinearGradient
                 colors={['rgba(255,68,68,0.3)', 'rgba(255,68,68,0.1)']}
                 style={styles.clearButtonGradient}
               >
                 <MaterialIcons name="delete-sweep" size={20} color="#FF4444" />
-                <Text style={styles.clearButtonText}>Limpiar</Text>
+                <Text style={styles.clearButtonText}>Limpiar Completadas</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
