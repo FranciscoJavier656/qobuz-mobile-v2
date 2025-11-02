@@ -33,6 +33,7 @@ interface PlayerContextType {
   setIsLocalFile: (isLocal: boolean) => void;
   queue: Track[];
   setQueue: (queue: Track[]) => void;
+  addToQueue: (tracks: Track[]) => void;
   currentIndex: number;
   setCurrentIndex: (index: number) => void;
   playNext: () => void;
@@ -56,6 +57,10 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShuffleEnabled, setIsShuffleEnabled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
+
+  const addToQueue = (tracks: Track[]) => {
+    setQueue(prevQueue => [...prevQueue, ...tracks]);
+  };
 
   const playNext = () => {
     if (currentIndex < queue.length - 1) {
@@ -91,6 +96,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setIsLocalFile,
       queue,
       setQueue,
+      addToQueue,
       currentIndex,
       setCurrentIndex,
       playNext,

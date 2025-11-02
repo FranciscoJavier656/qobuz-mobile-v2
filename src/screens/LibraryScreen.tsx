@@ -443,6 +443,7 @@ const LibraryScreen = () => {
   const setIsLocalFile = playerContext.setIsLocalFile;
   const queue = playerContext.queue;
   const setQueue = playerContext.setQueue;
+  const addToQueue = playerContext.addToQueue;
   const currentIndex = playerContext.currentIndex;
   const setCurrentIndex = playerContext.setCurrentIndex;
   const repeatMode = playerContext.repeatMode;
@@ -1046,7 +1047,18 @@ const LibraryScreen = () => {
         return;
       }
       
-      // Configurar la cola de reproducción
+      // Si ya hay algo reproduciéndose, agregar a la cola
+      if (currentTrack && queue.length > 0) {
+        addToQueue(tracks);
+        Alert.alert(
+          'Agregado a la cola',
+          `${tracks.length} canción${tracks.length > 1 ? 'es' : ''} de "${album.title}" agregadas a la cola de reproducción`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Si no hay nada reproduciéndose, iniciar reproducción
       setQueue(tracks);
       setCurrentIndex(0);
       
@@ -1131,7 +1143,18 @@ const LibraryScreen = () => {
         return;
       }
       
-      // Configurar la cola de reproducción
+      // Si ya hay algo reproduciéndose, agregar a la cola
+      if (currentTrack && queue.length > 0) {
+        addToQueue(artistTracks);
+        Alert.alert(
+          'Agregado a la cola',
+          `${artistTracks.length} canción${artistTracks.length > 1 ? 'es' : ''} de "${artist.name}" agregadas a la cola de reproducción`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Si no hay nada reproduciéndose, iniciar reproducción
       setQueue(artistTracks);
       setCurrentIndex(0);
       
