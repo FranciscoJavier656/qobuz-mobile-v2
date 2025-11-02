@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
+import { Audio } from 'expo-av';
 
 // Suprimir warnings conocidos temporalmente
 LogBox.ignoreLogs([
@@ -126,6 +127,29 @@ const AppNavigator = () => {
   const authToken = useSelector((state: RootState) => state.auth.token);
   const user = useSelector((state: RootState) => state.auth.user);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  // Configurar audio para reproducción en segundo plano (una sola vez al iniciar)
+  useEffect(() => {
+    const configureAudio = async () => {
+      try {
+        console.log('[App] 🎵 Configurando modo de audio para reproducción en segundo plano...');
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true, // ✅ Reproducción en segundo plano
+          playsInSilentModeIOS: true,    // ✅ Reproducción en modo silencio
+          shouldDuckAndroid: true,       // ✅ Reduce volumen de otras apps en Android
+          playThroughEarpieceAndroid: false,
+          interruptionModeIOS: 1, // Do not mix
+          interruptionModeAndroid: 1, // Do not mix
+        });
+        console.log('[App] ✅ Modo de audio configurado correctamente');
+      } catch (error) {
+        console.error('[App] ❌ Error configurando audio:', error);
+      }
+    };
+
+    configureAudio();
+  }, []);
 
   // Cargar estado de autenticación al iniciar
   useEffect(() => {

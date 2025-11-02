@@ -420,13 +420,10 @@ const SearchScreen = () => {
     }
   }, [authToken]);
 
-  useEffect(() => {
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      staysActiveInBackground: false,
-      playsInSilentModeIOS: true,
-    });
+  // Audio mode ya está configurado globalmente en App.tsx
+  // No es necesario configurarlo aquí nuevamente
 
+  useEffect(() => {
     // Fade in animation on mount
     Animated.timing(fadeAnim, {
       toValue: 1,
