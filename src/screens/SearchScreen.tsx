@@ -27,7 +27,7 @@ import store from '../store';
 import { usePlayerContext } from '../contexts/PlayerContext';
 
 import { RootState } from '../store';
-import { addDownload } from '../slices/downloadSlice';
+import { addDownload } from '../store/slices/downloadSlice';
 import { QobuzAPI } from '../services/qobuz/QobuzAPI';
 import type { Track } from '../services/qobuz/types';
 

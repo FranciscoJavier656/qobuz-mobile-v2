@@ -5,8 +5,9 @@ import {
   setDownloadStatus,
   startDownload as startDownloadAction,
   type DownloadItem,
-} from '../slices/downloadSlice';
-import { saveDownloads, loadDownloads } from '../store/slices/downloadSlice';
+  saveDownloads,
+  loadDownloads,
+} from '../store/slices/downloadSlice';
 import { addMetadataFromTrackAsync } from '../store/slices/librarySlice';
 
 /**

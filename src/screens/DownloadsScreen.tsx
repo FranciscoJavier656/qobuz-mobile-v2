@@ -19,7 +19,7 @@ import {
   deleteDownloadWithFile,
   type DownloadItem,
   type DownloadSliceState,
-} from '../slices/downloadSlice';
+} from '../store/slices/downloadSlice';
 import { addMetadataFromTrackAsync } from '../store/slices/librarySlice';
 import { usePlayerContext } from '../contexts/PlayerContext';
 
