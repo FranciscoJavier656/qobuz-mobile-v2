@@ -29,6 +29,7 @@ import { loadDownloads } from '../store/slices/downloadSlice';
 import type { Track, Album, Artist } from '../services/qobuz/types';
 import { usePlayerContext } from '../contexts/PlayerContext';
 import { QobuzAPI } from '../services/qobuz/QobuzAPI';
+import AudioPlayerService from '../services/AudioPlayerService';
 
 const Icon = MaterialIcons;
 
@@ -748,28 +749,10 @@ const LibraryScreen = () => {
         throw new Error('No local URI found');
       }
 
-      // Limpiar y normalizar la URI
-      let cleanUri = localUri;
-      
-      // Si ya tiene el prefijo file://, quitarlo temporalmente
-      const hasFilePrefix = cleanUri.startsWith('file://');
-      if (hasFilePrefix) {
-        cleanUri = cleanUri.replace('file://', '');
-      }
-      
-      // Decodificar cualquier encoding existente
-      cleanUri = decodeURIComponent(cleanUri);
-      
-      // Codificar solo los caracteres especiales (incluye espacios y caracteres como ñ, á, etc.)
-      cleanUri = encodeURI(cleanUri);
-      
-      // Restaurar el prefijo file://
-      const finalUri = hasFilePrefix ? `file://${cleanUri}` : cleanUri;
-      
-      console.log('[LibraryScreen] 🎵 URI original:', localUri);
-      console.log('[LibraryScreen] 🎵 URI codificada:', finalUri);
+      console.log('[LibraryScreen] 🎵 Usando reproductor nativo para:', track.title);
+      console.log('[LibraryScreen] 🎵 URI:', localUri);
 
-      // Si hay un sonido anterior, detenerlo
+      // Detener cualquier reproducción anterior
       if (sound) {
         try {
           const status = await sound.getStatusAsync();
@@ -785,32 +768,35 @@ const LibraryScreen = () => {
 
       setIsLocalFile(true);
       
-      const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
-        { uri: finalUri },
-        { shouldPlay: true }
-      );
-
-      // Configurar callback para cuando termine la canción
-      setupSoundCallback(newSound);
-
-      setSound(newSound);
+      // Usar nuestro reproductor nativo AudioPlayerService
+      const playerService = await AudioPlayerService.createAsync();
       
-      // Establecer isPlaying basado en el estado inicial real del sound
-      if (initialStatus.isLoaded) {
-        setIsPlaying((initialStatus as any).isPlaying);
-      }
+      // Cargar el audio
+      console.log('[LibraryScreen] 📂 Cargando audio en reproductor nativo...');
+      const { durationMillis } = await playerService.loadAsync(localUri);
+      console.log('[LibraryScreen] ✅ Audio cargado, duración:', durationMillis, 'ms');
       
-      // Verificar el estado después de un breve momento para asegurar sincronización
-      setTimeout(async () => {
-        try {
-          const currentStatus = await newSound.getStatusAsync();
-          if (currentStatus.isLoaded && currentStatus.isPlaying) {
-            setIsPlaying(true);
-          }
-        } catch (e) {
-          // Ignorar errores
-        }
-      }, 200);
+      // Configurar callback de status
+      playerService.setOnPlaybackStatusUpdate((status) => {
+        setIsPlaying(status.isPlaying);
+        // Aquí puedes actualizar otros estados como posición, etc.
+      });
+      
+      // Configurar callback de fin de reproducción
+      playerService.setOnPlaybackFinished(() => {
+        console.log('[LibraryScreen] 🎵 Track terminado, reproduciendo siguiente...');
+        playNextTrack();
+      });
+      
+      // Iniciar reproducción
+      await playerService.playAsync();
+      setIsPlaying(true);
+      
+      console.log('[LibraryScreen] ▶️ Reproducción iniciada con motor nativo');
+      
+      // Guardar referencia al player service (necesitaremos actualizar el contexto)
+      // Por ahora, creamos un "mock sound" para compatibilidad
+      setSound({} as any);
 
     } catch (error) {
       console.error('[LibraryScreen] ❌ Error playing local track:', error);
