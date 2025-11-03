@@ -206,7 +206,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
   // Actualizar posición y duración del audio usando el callback nativo de expo-av
   useEffect(() => {
-    if (!sound) return;
+    if (!sound || typeof sound.setOnPlaybackStatusUpdate !== 'function') return;
 
     // Usar el callback nativo en lugar de polling con setInterval
     // Esto es MUCHO más eficiente y no bloquea el hilo de JS
@@ -264,7 +264,9 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
     // Limpiar el callback al desmontar
     return () => {
-      sound.setOnPlaybackStatusUpdate(null);
+      if (typeof sound.setOnPlaybackStatusUpdate === 'function') {
+        sound.setOnPlaybackStatusUpdate(null);
+      }
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }

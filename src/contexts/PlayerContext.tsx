@@ -201,17 +201,19 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       );
 
       // Configurar callback recursivo para el siguiente track
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          setIsPlaying(status.isPlaying);
-          
-          if (status.didJustFinish) {
-            console.log('[PlayerContext] 🎵 Track terminó, reproduciendo siguiente...');
-            setIsPlaying(false);
-            playNextTrack();
+      if (newSound && typeof newSound.setOnPlaybackStatusUpdate === 'function') {
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded) {
+            setIsPlaying(status.isPlaying);
+            
+            if (status.didJustFinish) {
+              console.log('[PlayerContext] 🎵 Track terminó, reproduciendo siguiente...');
+              setIsPlaying(false);
+              playNextTrack();
+            }
           }
-        }
-      });
+        });
+      }
 
       setSound(newSound);
       setCurrentTrack(nextTrack);
@@ -242,25 +244,27 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Función para configurar el callback de autoplay en cualquier sonido
   const setupSoundCallback = useCallback((newSound: Audio.Sound) => {
     console.log('[PlayerContext] ⚙️ Configurando callback de autoplay');
-    newSound.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded) {
-        setIsPlaying(status.isPlaying);
-        
-        // Log detallado para debugging
-        if (status.positionMillis && status.durationMillis) {
-          const progress = (status.positionMillis / status.durationMillis) * 100;
-          if (progress > 95) {
-            console.log('[PlayerContext] 🔄 Cerca del final:', progress.toFixed(1) + '%');
+    if (newSound && typeof newSound.setOnPlaybackStatusUpdate === 'function') {
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          setIsPlaying(status.isPlaying);
+          
+          // Log detallado para debugging
+          if (status.positionMillis && status.durationMillis) {
+            const progress = (status.positionMillis / status.durationMillis) * 100;
+            if (progress > 95) {
+              console.log('[PlayerContext] 🔄 Cerca del final:', progress.toFixed(1) + '%');
+            }
+          }
+          
+          if (status.didJustFinish) {
+            console.log('[PlayerContext] 🎵 Track terminó, reproduciendo siguiente...');
+            setIsPlaying(false);
+            playNextTrack();
           }
         }
-        
-        if (status.didJustFinish) {
-          console.log('[PlayerContext] 🎵 Track terminó, reproduciendo siguiente...');
-          setIsPlaying(false);
-          playNextTrack();
-        }
-      }
-    });
+      });
+    }
   }, [playNextTrack]);
 
   return (

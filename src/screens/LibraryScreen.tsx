@@ -22,7 +22,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { createSelector } from '@reduxjs/toolkit';
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { RootState, AppDispatch } from '../store';
 import { removeFromFavorites, correctFavoriteSource } from '../store/slices/favoritesSlice';
 import { loadLibrary, processExistingDownloads } from '../store/slices/librarySlice';
@@ -660,7 +660,7 @@ const LibraryScreen = () => {
       console.log('[LibraryScreen] Is authenticated:', isAuthenticated);
       
       // Si hay un sonido anterior, detenerlo
-      if (sound) {
+      if (sound && typeof sound.getStatusAsync === 'function') {
         try {
           const status = await sound.getStatusAsync();
           if (status.isLoaded) {
@@ -777,7 +777,7 @@ const LibraryScreen = () => {
       localUri = newLocalUri; // Usar el path correcto
 
       // Detener cualquier reproducción anterior
-      if (sound) {
+      if (sound && typeof sound.getStatusAsync === 'function') {
         try {
           const status = await sound.getStatusAsync();
           if (status.isLoaded) {
@@ -818,9 +818,8 @@ const LibraryScreen = () => {
       
       console.log('[LibraryScreen] ▶️ Reproducción iniciada con motor nativo');
       
-      // Guardar referencia al player service (necesitaremos actualizar el contexto)
-      // Por ahora, creamos un "mock sound" para compatibilidad
-      setSound({} as any);
+      // NO guardar nada en sound cuando usamos reproductor nativo
+      // El playerService ya tiene su propia gestión de estado
 
     } catch (error) {
       console.error('[LibraryScreen] ❌ Error playing local track:', error);
@@ -845,7 +844,7 @@ const LibraryScreen = () => {
       // Si es el mismo track, alternar play/pause
       if (currentTrack?.id.toString() === trackId && miniPlayerVisible) {
         console.log('[LibraryScreen] Same track, toggling play/pause');
-        if (sound) {
+        if (sound && typeof sound.getStatusAsync === 'function') {
           const status = await sound.getStatusAsync();
           if (status.isLoaded) {
             if (isPlaying) {
@@ -920,7 +919,7 @@ const LibraryScreen = () => {
 
       // Si es el mismo track, alternar play/pause
       if (currentTrack?.id.toString() === trackId && miniPlayerVisible) {
-        if (sound) {
+        if (sound && typeof sound.getStatusAsync === 'function') {
           const status = await sound.getStatusAsync();
           if (status.isLoaded) {
             if (isPlaying) {

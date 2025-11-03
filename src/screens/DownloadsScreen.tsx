@@ -115,11 +115,13 @@ const DownloadsScreen = () => {
       );
 
       // Configurar callback de actualización de estado
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          playerContext.setIsPlaying(status.isPlaying);
-        }
-      });
+      if (sound && typeof sound.setOnPlaybackStatusUpdate === 'function') {
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded) {
+            playerContext.setIsPlaying(status.isPlaying);
+          }
+        });
+      }
 
       // Crear track con localUri incluido para favoritos
       const trackWithLocalUri = {

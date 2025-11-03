@@ -438,6 +438,14 @@ const downloadSlice = createSlice({
           download.completedAt = Date.now();
           download.progress = 100;
           download.localPath = action.payload.localPath;
+          
+          // IMPORTANTE: También actualizar localPath en el track
+          if (action.payload.localPath && download.track) {
+            download.track.localPath = action.payload.localPath;
+            (download.track as any).localUri = action.payload.localPath;
+            (download.track as any).local_file_uri = action.payload.localPath;
+          }
+          
           state.stats.successCount++;
           state.stats.totalDownloaded++;
           state.stats.totalSize += download.totalBytes;

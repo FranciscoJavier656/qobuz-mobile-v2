@@ -381,7 +381,7 @@ const SearchScreen = () => {
   
   // Actualizar progreso de reproducción usando el callback nativo
   useEffect(() => {
-    if (!sound) return;
+    if (!sound || typeof sound.setOnPlaybackStatusUpdate !== 'function') return;
 
     const onPlaybackStatusUpdate = (status: any) => {
       if (status.isLoaded && !isSeeking) {
@@ -412,7 +412,9 @@ const SearchScreen = () => {
     sound.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
 
     return () => {
-      sound.setOnPlaybackStatusUpdate(null);
+      if (typeof sound.setOnPlaybackStatusUpdate === 'function') {
+        sound.setOnPlaybackStatusUpdate(null);
+      }
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
