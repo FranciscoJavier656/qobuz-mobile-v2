@@ -7,6 +7,9 @@ const FullPlayerWrapper: React.FC = () => {
     currentTrack,
     isPlaying,
     sound,
+    playerService,
+    position,
+    duration,
     fullPlayerVisible,
     setFullPlayerVisible,
     setMiniPlayerVisible,
@@ -25,6 +28,7 @@ const FullPlayerWrapper: React.FC = () => {
     setIsShuffleEnabled,
     repeatMode,
     setRepeatMode,
+    currentAudioUrl,
   } = usePlayerContext();
 
   const handleClose = () => {
@@ -32,17 +36,28 @@ const FullPlayerWrapper: React.FC = () => {
   };
 
   const handlePlayPause = async () => {
-    if (!sound) return;
-
     try {
-      const status = await sound.getStatusAsync();
-      if (status.isLoaded) {
+      // Si hay playerService (reproductor nativo), usarlo
+      if (playerService) {
         if (isPlaying) {
-          await sound.pauseAsync();
+          await playerService.pauseAsync();
           setIsPlaying(false);
         } else {
-          await sound.playAsync();
+          await playerService.playAsync();
           setIsPlaying(true);
+        }
+      }
+      // Si no, usar expo-av (streaming)
+      else if (sound && typeof sound.getStatusAsync === 'function') {
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          if (isPlaying) {
+            await sound.pauseAsync();
+            setIsPlaying(false);
+          } else {
+            await sound.playAsync();
+            setIsPlaying(true);
+          }
         }
       }
     } catch (error) {
@@ -107,6 +122,10 @@ const FullPlayerWrapper: React.FC = () => {
       track={currentTrack}
       isPlaying={isPlaying}
       sound={sound}
+      playerService={playerService}
+      position={position}
+      duration={duration}
+      audioUrl={currentAudioUrl || undefined}
       onClose={handleClose}
       onPlayPause={handlePlayPause}
       visible={fullPlayerVisible}

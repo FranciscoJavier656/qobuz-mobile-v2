@@ -433,6 +433,12 @@ const LibraryScreen = () => {
   const playerContext = usePlayerContext();
   const sound = playerContext.sound;
   const setSound = playerContext.setSound;
+  const playerService = playerContext.playerService;
+  const setPlayerService = playerContext.setPlayerService;
+  const position = playerContext.position;
+  const setPosition = playerContext.setPosition;
+  const duration = playerContext.duration;
+  const setDuration = playerContext.setDuration;
   const currentTrack = playerContext.currentTrack;
   const setCurrentTrack = playerContext.setCurrentTrack;
   const isPlaying = playerContext.isPlaying;
@@ -793,27 +799,38 @@ const LibraryScreen = () => {
       setIsLocalFile(true);
       
       // Usar nuestro reproductor nativo AudioPlayerService
-      const playerService = await AudioPlayerService.createAsync();
+      const playerSvc = await AudioPlayerService.createAsync();
       
       // Cargar el audio
       console.log('[LibraryScreen] 📂 Cargando audio en reproductor nativo...');
-      const { durationMillis } = await playerService.loadAsync(localUri);
+      const { durationMillis } = await playerSvc.loadAsync(localUri);
       console.log('[LibraryScreen] ✅ Audio cargado, duración:', durationMillis, 'ms');
       
-      // Configurar callback de status
-      playerService.setOnPlaybackStatusUpdate((status) => {
+      // Guardar la instancia en el contexto para que MiniPlayer/FullPlayer puedan acceder
+      setPlayerService(playerSvc);
+      setDuration(durationMillis);
+      setPosition(0);
+      
+      // Configurar callback de status para actualizar UI
+      playerSvc.setOnPlaybackStatusUpdate((status) => {
+        console.log('[LibraryScreen] 📊 Status update:', {
+          isPlaying: status.isPlaying,
+          position: status.positionMillis,
+          duration: status.durationMillis
+        });
         setIsPlaying(status.isPlaying);
-        // Aquí puedes actualizar otros estados como posición, etc.
+        setPosition(status.positionMillis);
+        setDuration(status.durationMillis);
       });
       
       // Configurar callback de fin de reproducción
-      playerService.setOnPlaybackFinished(() => {
+      playerSvc.setOnPlaybackFinished(() => {
         console.log('[LibraryScreen] 🎵 Track terminado, reproduciendo siguiente...');
         playNextTrack();
       });
       
       // Iniciar reproducción
-      await playerService.playAsync();
+      await playerSvc.playAsync();
       setIsPlaying(true);
       
       console.log('[LibraryScreen] ▶️ Reproducción iniciada con motor nativo');

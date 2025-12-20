@@ -361,6 +361,7 @@ const SearchScreen = () => {
   const setQueue = playerContext.setQueue;
   const currentIndex = playerContext.currentIndex;
   const setCurrentIndex = playerContext.setCurrentIndex;
+  const setCurrentAudioUrl = playerContext.setCurrentAudioUrl; // 🎨 Para extracción de colores desde audio
   
   const [playingTrackId, setPlayingTrackId] = useState<number | null>(null);
   const [isFullTrack, setIsFullTrack] = useState(false);
@@ -488,6 +489,21 @@ const SearchScreen = () => {
       const searchResults = await qobuzAPI.searchTracks(query, 50);
       console.log('[SearchScreen] Resultados obtenidos:', searchResults?.length || 0);
       setResults(searchResults || []);
+      
+      // 🎨 Pre-cargar colores de los primeros 10 resultados en segundo plano
+      if (searchResults && searchResults.length > 0) {
+        const imageUris = searchResults
+          .slice(0, 10)
+          .map(track => track.album?.image?.large || track.album?.image?.small)
+          .filter((uri): uri is string => !!uri);
+        
+        if (imageUris.length > 0) {
+          import('../components/MitsuhaVisualizer/hooks/useImageColors').then(({ preloadMultipleImageColors }) => {
+            preloadMultipleImageColors(imageUris);
+            console.log('[SearchScreen] 🎨 Pre-cargando colores de', imageUris.length, 'imágenes');
+          });
+        }
+      }
     } catch (error) {
       console.error('[SearchScreen] Search error:', error);
       setResults([]);
@@ -619,6 +635,9 @@ const SearchScreen = () => {
         return;
       }
 
+      // 🎨 Guardar URL del audio para extracción de colores
+      setCurrentAudioUrl(fullTrackUrl);
+
       const { sound: newSound, status: initialStatus } = await Audio.Sound.createAsync(
         { uri: fullTrackUrl },
         { shouldPlay: true }
@@ -684,6 +703,16 @@ const SearchScreen = () => {
   // Abrir mini player y reproducir track completo
   const handleOpenMiniPlayer = async (track: Track) => {
     console.log('[SearchScreen] ==> handleOpenMiniPlayer INICIO - track:', track.title);
+    
+    // 🎨 Pre-cargar colores INMEDIATAMENTE para que estén listos cuando se abra el player
+    const albumImageUri = track.album?.image?.large || track.album?.image?.small;
+    if (albumImageUri) {
+      // Import dinámico para evitar dependencia circular
+      import('../components/MitsuhaVisualizer/hooks/useImageColors').then(({ preloadImageColors }) => {
+        preloadImageColors(albumImageUri);
+      });
+    }
+    
     console.log('[SearchScreen] Estado ANTES:', { 
       miniPlayerVisible, 
       currentTrack: currentTrack?.id, 
