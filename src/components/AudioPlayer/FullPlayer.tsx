@@ -29,7 +29,7 @@ import { addToFavorites, removeFromFavorites } from '../../store/slices/favorite
 import { createPlaylist, addTrackToPlaylist } from '../../store/slices/librarySlice';
 import Equalizer from './Equalizer'; // ✨ Importar ecualizador
 import AudioPlayerService from '../../services/AudioPlayerService';
-import { MitsuhaVisualizerNative } from '../MitsuhaVisualizer'; // 🎵 Visualizador nativo de libmitsuha6
+import { MitsuhaMetalVisualizer } from '../MitsuhaVisualizer'; // 🎵 Visualizador Metal GPU
 import { useImageColors } from '../MitsuhaVisualizer/hooks/useImageColors'; // 🎨 Colores dinámicos
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -623,9 +623,9 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           locations={[0, 0.4, 1]}
           style={styles.gradient}
         >
-          {/* 🎵 Visualizador nativo libmitsuha6 - Siempre montado para permitir animaciones */}
+          {/* 🎵 Visualizador Metal GPU - Animaciones fluidas a 60fps */}
           <View style={styles.mitsuhaContainer}>
-            <MitsuhaVisualizerNative
+            <MitsuhaMetalVisualizer
               isPlaying={isPlaying}
               albumArtUri={albumImageUri}
               width={SCREEN_WIDTH}
@@ -636,6 +636,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
                 gain: 50,
                 sensitivity: 1.3,
                 waveOffset: 0,
+                useMetal: true,
               }}
             />
           </View>

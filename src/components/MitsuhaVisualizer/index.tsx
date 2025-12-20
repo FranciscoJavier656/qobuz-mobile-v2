@@ -6,6 +6,11 @@
  * - Curvas Bezier originales
  * - Rendimiento nativo a 60fps
  * 
+ * NUEVO: Soporte Metal GPU Rendering
+ * - MitsuhaMetalVisualizer para renderizado en GPU
+ * - Shaders optimizados para curvas Bézier
+ * - 60fps con bajo consumo de CPU
+ * 
  * En Android: Fallback al visualizador JavaScript
  */
 
@@ -14,6 +19,9 @@ import { Platform } from 'react-native';
 // Exportar el visualizador principal según la plataforma
 export { default as MitsuhaVisualizerNative } from './MitsuhaVisualizerNative';
 export { default as MitsuhaVisualizer } from './MitsuhaVisualizer';
+
+// NUEVO: Visualizador con Metal GPU Rendering
+export { default as MitsuhaMetalVisualizer, VisualizerStyle } from './MitsuhaMetalVisualizer';
 
 // Componente preferido: Nativo en iOS, JS en Android
 export { default as MitsuhaVisualizerAuto } from './MitsuhaVisualizerNative';

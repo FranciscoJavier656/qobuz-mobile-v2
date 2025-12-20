@@ -10,3 +10,6 @@
 #import "../MitsuhaView/MSHFAudioProcessing.h"
 #import "../MitsuhaView/MSHFAudioDelegate.h"
 #import "../MitsuhaView/MSHFAudioProcessingDelegate.h"
+
+// Metal View headers
+#import "../MitsuhaView/Metal/RNMitsuhaMetalView.h"
