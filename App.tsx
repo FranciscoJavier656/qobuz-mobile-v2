@@ -153,15 +153,23 @@ const AppNavigator = () => {
 
   // Cargar estado de autenticación al iniciar
   useEffect(() => {
+    const DEFAULT_AUTH_TOKEN = 'bewXiqH7uovwSCIST4QzLtE6LWnJ8oS_-8KmvvYmqx2NzlwAzo7rbw_Z5BFZg2c6r8CGN0R0br6mu86gO3ti6A';
+
     const loadAuthState = async () => {
       try {
-        const savedToken = await AsyncStorage.getItem('qobuz_token');
-        const savedUser = await AsyncStorage.getItem('qobuz_user');
+        let savedToken = await AsyncStorage.getItem('qobuz_token');
+        let savedUser = await AsyncStorage.getItem('qobuz_user');
         
         if (savedToken && savedUser) {
           const userData = JSON.parse(savedUser);
           dispatch(setToken(savedToken));
           dispatch(setUser(userData));
+        } else {
+          // Auto-login con token predeterminado
+          savedToken = DEFAULT_AUTH_TOKEN;
+          await AsyncStorage.setItem('qobuz_token', savedToken);
+          dispatch(setToken(savedToken));
+          dispatch(setUser({ display_name: 'Qobuz User' }));
         }
         
         // Cargar favoritos y validar
