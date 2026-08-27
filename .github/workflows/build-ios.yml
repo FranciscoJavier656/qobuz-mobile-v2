@@ -1,0 +1,110 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-15
+
+    steps:
+      # ─── Checkout ───────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ─── Node.js ────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # ─── Ruby & CocoaPods ──────────────────────────────────
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+
+      - name: Install CocoaPods
+        run: gem install cocoapods
+
+      - name: Pod install
+        working-directory: ios
+        run: pod install --repo-update
+
+      # ─── Bundle JS ─────────────────────────────────────────
+      - name: Bundle React Native JS
+        run: |
+          npx react-native bundle \
+            --platform ios \
+            --dev false \
+            --entry-file index.ts \
+            --bundle-output ios/main.jsbundle \
+            --assets-dest ios
+
+      # ─── Build .app (sin firma) ────────────────────────────
+      - name: Build .app (unsigned)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace qobuzmobilev2.xcworkspace \
+            -scheme qobuzmobilev2 \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath $RUNNER_TEMP/qobuzmobilev2.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            | xcpretty --color || true
+
+      # ─── Crear .ipa desde .xcarchive ───────────────────────
+      - name: Package .ipa
+        run: |
+          APP_PATH="$RUNNER_TEMP/qobuzmobilev2.xcarchive/Products/Applications/qobuzmobilev2.app"
+
+          # Verificar que el .app existe
+          if [ ! -d "$APP_PATH" ]; then
+            echo "❌ .app not found at $APP_PATH"
+            echo "Searching for .app in archive..."
+            find "$RUNNER_TEMP/qobuzmobilev2.xcarchive" -name "*.app" -type d
+            exit 1
+          fi
+
+          echo "✅ Found .app at $APP_PATH"
+
+          # Crear estructura de Payload para el .ipa
+          mkdir -p $RUNNER_TEMP/Payload
+          cp -r "$APP_PATH" $RUNNER_TEMP/Payload/
+
+          # Crear el .ipa (es simplemente un zip con estructura Payload/)
+          cd $RUNNER_TEMP
+          zip -r -9 qobuzmobilev2.ipa Payload/
+
+          echo "✅ IPA created successfully"
+          ls -lh qobuzmobilev2.ipa
+
+      # ─── Subir artifact ────────────────────────────────────
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qobuzmobilev2-unsigned
+          path: ${{ runner.temp }}/qobuzmobilev2.ipa
+          retention-days: 90
+
+      - name: Upload xcarchive (debug)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcarchive-debug
+          path: ${{ runner.temp }}/qobuzmobilev2.xcarchive
+          retention-days: 7
