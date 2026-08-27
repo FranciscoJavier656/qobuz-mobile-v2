@@ -42,7 +42,7 @@ jobs:
       # ─── Bundle JS ─────────────────────────────────────────
       - name: Bundle React Native JS
         run: |
-          npx react-native bundle \
+          npx expo export:embed \
             --platform ios \
             --dev false \
             --entry-file index.ts \
