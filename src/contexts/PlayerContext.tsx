@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { Audio } from 'expo-av';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import EqualizerService from '../services/EqualizerService';
+import AudioPlayerService from '../services/AudioPlayerService';
+import audioTapService from '../services/AudioTapBridge';
 
 export interface Track {
   id: number;
@@ -27,10 +30,18 @@ interface PlayerContextType {
   setFullPlayerVisible: (visible: boolean) => void;
   currentTrack: Track | null;
   setCurrentTrack: (track: Track | null) => void;
+  currentAudioUrl: string | null; // URL del stream de audio actual
+  setCurrentAudioUrl: (url: string | null) => void;
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
   sound: Audio.Sound | null;
   setSound: (sound: Audio.Sound | null) => void;
+  playerService: AudioPlayerService | null;
+  setPlayerService: (service: AudioPlayerService | null) => void;
+  position: number;
+  setPosition: (pos: number) => void;
+  duration: number;
+  setDuration: (dur: number) => void;
   miniPlayerVisible: boolean;
   setMiniPlayerVisible: (visible: boolean) => void;
   isLocalFile: boolean;
@@ -55,8 +66,12 @@ const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [fullPlayerVisible, setFullPlayerVisible] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [playerService, setPlayerService] = useState<AudioPlayerService | null>(null);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [miniPlayerVisible, setMiniPlayerVisible] = useState(false);
   const [isLocalFile, setIsLocalFile] = useState(false);
   const [queue, setQueue] = useState<Track[]>([]);
@@ -219,6 +234,14 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setCurrentTrack(nextTrack);
       setCurrentIndex(nextIndex);
 
+      // Notificar al MTAudioTap que hay un nuevo PlayerItem (solo iOS)
+      if (Platform.OS === 'ios') {
+        setTimeout(() => {
+          audioTapService.notifyPlayerReady();
+          console.log('[PlayerContext] 🎵 Notificado MTAudioTap de nuevo audio');
+        }, 300);
+      }
+
       if (initialStatus.isLoaded) {
         setIsPlaying(initialStatus.isPlaying);
       }
@@ -273,10 +296,18 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setFullPlayerVisible,
       currentTrack,
       setCurrentTrack,
+      currentAudioUrl,
+      setCurrentAudioUrl,
       isPlaying,
       setIsPlaying,
       sound,
       setSound,
+      playerService,
+      setPlayerService,
+      position,
+      setPosition,
+      duration,
+      setDuration,
       miniPlayerVisible,
       setMiniPlayerVisible,
       isLocalFile,

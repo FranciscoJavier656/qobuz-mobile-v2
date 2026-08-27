@@ -7,33 +7,93 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0DB393E9A5E05DA7F4ACCE04 /* MSHFView.m in Sources */ = {isa = PBXBuildFile; fileRef = 19EE2085DA34257034312531 /* MSHFView.m */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		196F93503A8C8FD6024F1017 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A52B133A5FC1F0B3E79BE31 /* ExpoModulesProvider.swift */; };
+		2582457A76F841CFDB841B06 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53187C91D2DEE8A992B8DBC8 /* ExpoModulesProvider.swift */; };
+		2E29A95E70CBA4AC4368CB78 /* RNVImageColorExtractor.m in Sources */ = {isa = PBXBuildFile; fileRef = DB6B1A371DA44940538EE466 /* RNVImageColorExtractor.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		5CFB37AB91A10618700C48FB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 931E1F80B46C08336C1CBE7B /* PrivacyInfo.xcprivacy */; };
-		92987E512EB81E1700A47510 /* RNEqualizer.m in Sources */ = {isa = PBXBuildFile; fileRef = 92987E4F2EB81E1700A47510 /* RNEqualizer.m */; };
-		92987E522EB81E1700A47510 /* RNEqualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92987E502EB81E1700A47510 /* RNEqualizer.swift */; };
-		9499EEBC74BC4B68F8E662AE /* libPods-qobuzmobilev2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3EB916EF413F1C4C63D52455 /* libPods-qobuzmobilev2.a */; };
+		5378E625592B35D2DEEB872B /* QobuzAudioTapProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = 37DCC5E738F3FC0B9FE5B33D /* QobuzAudioTapProcessor.m */; };
+		55BE830A04AB697A9B63C0C9 /* MSHFSiriView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C9D37AA43DECB17BDA0E91 /* MSHFSiriView.swift */; };
+		5AC5096A07CAFD601C2C5E37 /* MSHFDotView.m in Sources */ = {isa = PBXBuildFile; fileRef = E67CAFD513409C8E18C5A3A8 /* MSHFDotView.m */; };
+		6627B9114C829198D131D409 /* MSHFLineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD5D676DE3D4A582ADAE6350 /* MSHFLineView.swift */; };
+		70156D3956E05119CDA9E591 /* RNMitsuhaView.m in Sources */ = {isa = PBXBuildFile; fileRef = 81744BD2F27058DFAEC0DAB2 /* RNMitsuhaView.m */; };
+		7454F19FC759643DB2BE70C4 /* VImageColorExtractor.m in Sources */ = {isa = PBXBuildFile; fileRef = AD719D750ABE55049076FFBB /* VImageColorExtractor.m */; };
+		7765331F05D0E3C02D413A3B /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2A4164E2DEB8BF5C15CD72D /* MetalKit.framework */; };
+		78C77CC916F120F138815BA4 /* MSHFAudioSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 86CC6C108BE494B1ED52A258 /* MSHFAudioSource.m */; };
+		83D5AC6886D73152E943BD0B /* MSHFConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE3D4A657214FC8783A59D2 /* MSHFConfig.swift */; };
+		8583498A57FD6060ACDBD9CB /* MitsuhaMetalRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2BA406E27BAB4B7526F38 /* MitsuhaMetalRenderer.swift */; };
+		897F6CFFD3DA916E5DE8472E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BCABD765186D2C8DE05A15F3 /* PrivacyInfo.xcprivacy */; };
+		A329211477AD28C721DE24D5 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D64055B61AAFB4FA655A9606 /* Metal.framework */; };
+		AE00F4E273159F2AB6016B57 /* MSHFAudioProcessing.m in Sources */ = {isa = PBXBuildFile; fileRef = 88CAC670A44EC8B04C932BF7 /* MSHFAudioProcessing.m */; };
+		ATBRIDGE001 /* AudioTapBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ATBRIDGE002 /* AudioTapBridge.m */; };
+		B8D1B9CD8B2CE6520FA6E49D /* MitsuhaShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 502B52C8055336EB2A0B5404 /* MitsuhaShaders.metal */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		BD787AA6E0D0522D9AB558A3 /* RNMitsuhaMetalView.m in Sources */ = {isa = PBXBuildFile; fileRef = A74D80CBDE7C43B152E164D0 /* RNMitsuhaMetalView.m */; };
+		C7FE813AA48F874A12835A53 /* libPods-qobuzmobilev2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 04081942F925BBA2BBDD5256 /* libPods-qobuzmobilev2.a */; };
+		D43D9110E51FF19FD55E91C4 /* MSHFJelloView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF59EFDA770B3EE39C785BF /* MSHFJelloView.swift */; };
+		D5C2E2C50649376A703E2109 /* MSHFBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5C9A5F666593EB7068FB9033 /* MSHFBarView.m */; };
+		EF82125209AB36825FC7841B /* MitsuhaMetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633209CAAE2EDFB1519C13CB /* MitsuhaMetalView.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		F34B16A196C381D8EE7AE18C /* MSHFJelloLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6075D319FFA6B094ACD2D24B /* MSHFJelloLayer.swift */; };
+		F54248A3765C900FC1E567E9 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2D1998B257AC5D69B2A9F2E8 /* Accelerate.framework */; };
+		MTAUDIO001 /* MTAudioTap.m in Sources */ = {isa = PBXBuildFile; fileRef = MTAUDIO002 /* MTAudioTap.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0A52B133A5FC1F0B3E79BE31 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-qobuzmobilev2/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		1240792DD1FF522595F997C8 /* Pods-qobuzmobilev2.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-qobuzmobilev2.release.xcconfig"; path = "Target Support Files/Pods-qobuzmobilev2/Pods-qobuzmobilev2.release.xcconfig"; sourceTree = "<group>"; };
+		02C9D37AA43DECB17BDA0E91 /* MSHFSiriView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MSHFSiriView.swift; sourceTree = "<group>"; };
+		04081942F925BBA2BBDD5256 /* libPods-qobuzmobilev2.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-qobuzmobilev2.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		0FF516C8923F9826E6CDCEB0 /* MSHFAudioProcessing.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFAudioProcessing.h; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* qobuzmobilev2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = qobuzmobilev2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = qobuzmobilev2/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = qobuzmobilev2/Info.plist; sourceTree = "<group>"; };
-		3EB916EF413F1C4C63D52455 /* libPods-qobuzmobilev2.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-qobuzmobilev2.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		92987E4F2EB81E1700A47510 /* RNEqualizer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNEqualizer.m; sourceTree = "<group>"; };
-		92987E502EB81E1700A47510 /* RNEqualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RNEqualizer.swift; sourceTree = "<group>"; };
-		931E1F80B46C08336C1CBE7B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = qobuzmobilev2/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		14E4C57B56982411D1FA304F /* MSHFSiriView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFSiriView.h; sourceTree = "<group>"; };
+		19EE2085DA34257034312531 /* MSHFView.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = MSHFView.m; sourceTree = "<group>"; };
+		1BE3D4A657214FC8783A59D2 /* MSHFConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MSHFConfig.swift; sourceTree = "<group>"; };
+		1C1BE9603B12E16F599786AC /* RNMitsuhaMetalView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = RNMitsuhaMetalView.h; path = ../../Metal/RNMitsuhaMetalView.h; sourceTree = "<group>"; };
+		21B2BA406E27BAB4B7526F38 /* MitsuhaMetalRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MitsuhaMetalRenderer.swift; path = ../../Metal/MitsuhaMetalRenderer.swift; sourceTree = "<group>"; };
+		2D1998B257AC5D69B2A9F2E8 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		37DCC5E738F3FC0B9FE5B33D /* QobuzAudioTapProcessor.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = QobuzAudioTapProcessor.m; sourceTree = "<group>"; };
+		3CF59EFDA770B3EE39C785BF /* MSHFJelloView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MSHFJelloView.swift; sourceTree = "<group>"; };
+		41396F5B3D5C78752E8BCDED /* MSHFView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFView.h; sourceTree = "<group>"; };
+		48428362B658DB93E01D2B62 /* MSHFAudioProcessingDelegate.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFAudioProcessingDelegate.h; sourceTree = "<group>"; };
+		502B52C8055336EB2A0B5404 /* MitsuhaShaders.metal */ = {isa = PBXFileReference; includeInIndex = 1; name = MitsuhaShaders.metal; path = ../../Metal/MitsuhaShaders.metal; sourceTree = "<group>"; };
+		53187C91D2DEE8A992B8DBC8 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-qobuzmobilev2/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		5C9A5F666593EB7068FB9033 /* MSHFBarView.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = MSHFBarView.m; sourceTree = "<group>"; };
+		5DB5EB5353DED58BA49D22C1 /* MSHFBarView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFBarView.h; sourceTree = "<group>"; };
+		6075D319FFA6B094ACD2D24B /* MSHFJelloLayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MSHFJelloLayer.swift; sourceTree = "<group>"; };
+		633209CAAE2EDFB1519C13CB /* MitsuhaMetalView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MitsuhaMetalView.swift; path = ../../Metal/MitsuhaMetalView.swift; sourceTree = "<group>"; };
+		81744BD2F27058DFAEC0DAB2 /* RNMitsuhaView.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RNMitsuhaView.m; sourceTree = "<group>"; };
+		86CC6C108BE494B1ED52A258 /* MSHFAudioSource.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = MSHFAudioSource.m; sourceTree = "<group>"; };
+		88CAC670A44EC8B04C932BF7 /* MSHFAudioProcessing.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = MSHFAudioProcessing.m; sourceTree = "<group>"; };
+		8B66C02501FAD591CB71DD77 /* Pods-qobuzmobilev2.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-qobuzmobilev2.debug.xcconfig"; path = "Target Support Files/Pods-qobuzmobilev2/Pods-qobuzmobilev2.debug.xcconfig"; sourceTree = "<group>"; };
+		8FE9D08B5DAF1C11021AB696 /* MSHFAudioSource.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFAudioSource.h; sourceTree = "<group>"; };
+		9A0737CBE37470539B321298 /* MSHFConfig.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFConfig.h; sourceTree = "<group>"; };
+		A2A4164E2DEB8BF5C15CD72D /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		A74D80CBDE7C43B152E164D0 /* RNMitsuhaMetalView.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = RNMitsuhaMetalView.m; path = ../../Metal/RNMitsuhaMetalView.m; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = qobuzmobilev2/SplashScreen.storyboard; sourceTree = "<group>"; };
+		AD5D676DE3D4A582ADAE6350 /* MSHFLineView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MSHFLineView.swift; sourceTree = "<group>"; };
+		AD719D750ABE55049076FFBB /* VImageColorExtractor.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = VImageColorExtractor.m; path = ../MitsuhaView/VImageColorExtractor.m; sourceTree = "<group>"; };
+		ATBRIDGE002 /* AudioTapBridge.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = AudioTapBridge.m; sourceTree = "<group>"; };
+		ATBRIDGE003 /* AudioTapBridge.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = AudioTapBridge.h; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		BCABD765186D2C8DE05A15F3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = qobuzmobilev2/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		CAF04F07A7F5A1C9F289862F /* Pods-qobuzmobilev2.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-qobuzmobilev2.release.xcconfig"; path = "Target Support Files/Pods-qobuzmobilev2/Pods-qobuzmobilev2.release.xcconfig"; sourceTree = "<group>"; };
+		D64055B61AAFB4FA655A9606 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		D8F3386CECA81114DBB7D5D5 /* QobuzAudioTapProcessor.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = QobuzAudioTapProcessor.h; sourceTree = "<group>"; };
+		DB6B1A371DA44940538EE466 /* RNVImageColorExtractor.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = RNVImageColorExtractor.m; path = ../MitsuhaView/RNVImageColorExtractor.m; sourceTree = "<group>"; };
+		E0D9262458199AD3C8BDBB0F /* RNMitsuhaView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = RNMitsuhaView.h; sourceTree = "<group>"; };
+		E67CAFD513409C8E18C5A3A8 /* MSHFDotView.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = MSHFDotView.m; sourceTree = "<group>"; };
+		E808D56AA2633D7C2137DE92 /* MSHFDotView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFDotView.h; sourceTree = "<group>"; };
+		E9872E69C0A993D176189864 /* VImageColorExtractor.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = VImageColorExtractor.h; path = ../MitsuhaView/VImageColorExtractor.h; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		EE448AC01929B38E575F741F /* MSHFJelloView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFJelloView.h; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = qobuzmobilev2/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* qobuzmobilev2-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "qobuzmobilev2-Bridging-Header.h"; path = "qobuzmobilev2/qobuzmobilev2-Bridging-Header.h"; sourceTree = "<group>"; };
-		F369365A48D227A8E6A97EE1 /* Pods-qobuzmobilev2.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-qobuzmobilev2.debug.xcconfig"; path = "Target Support Files/Pods-qobuzmobilev2/Pods-qobuzmobilev2.debug.xcconfig"; sourceTree = "<group>"; };
+		F36D1151DAF24B3FD541D51C /* MSHFAudioDelegate.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFAudioDelegate.h; sourceTree = "<group>"; };
+		F6C2A061F95C3375E7D21362 /* MSHFLineView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MSHFLineView.h; sourceTree = "<group>"; };
+		FD4A78C6932F3C07E1F85C12 /* RNVImageColorExtractor.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = RNVImageColorExtractor.h; path = ../MitsuhaView/RNVImageColorExtractor.h; sourceTree = "<group>"; };
+		MTAUDIO002 /* MTAudioTap.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = MTAudioTap.m; sourceTree = "<group>"; };
+		MTAUDIO003 /* MTAudioTap.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = MTAudioTap.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,13 +101,29 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9499EEBC74BC4B68F8E662AE /* libPods-qobuzmobilev2.a in Frameworks */,
+				C7FE813AA48F874A12835A53 /* libPods-qobuzmobilev2.a in Frameworks */,
+				A329211477AD28C721DE24D5 /* Metal.framework in Frameworks */,
+				7765331F05D0E3C02D413A3B /* MetalKit.framework in Frameworks */,
+				F54248A3765C900FC1E567E9 /* Accelerate.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0FF996A668D4CB95C1AFF60A /* Metal */ = {
+			isa = PBXGroup;
+			children = (
+				502B52C8055336EB2A0B5404 /* MitsuhaShaders.metal */,
+				21B2BA406E27BAB4B7526F38 /* MitsuhaMetalRenderer.swift */,
+				633209CAAE2EDFB1519C13CB /* MitsuhaMetalView.swift */,
+				1C1BE9603B12E16F599786AC /* RNMitsuhaMetalView.h */,
+				A74D80CBDE7C43B152E164D0 /* RNMitsuhaMetalView.m */,
+			);
+			name = Metal;
+			path = MitsuhaView/Metal;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* qobuzmobilev2 */ = {
 			isa = PBXGroup;
 			children = (
@@ -57,7 +133,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				931E1F80B46C08336C1CBE7B /* PrivacyInfo.xcprivacy */,
+				BCABD765186D2C8DE05A15F3 /* PrivacyInfo.xcprivacy */,
 			);
 			name = qobuzmobilev2;
 			sourceTree = "<group>";
@@ -66,10 +142,71 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				3EB916EF413F1C4C63D52455 /* libPods-qobuzmobilev2.a */,
+				04081942F925BBA2BBDD5256 /* libPods-qobuzmobilev2.a */,
+				D64055B61AAFB4FA655A9606 /* Metal.framework */,
+				A2A4164E2DEB8BF5C15CD72D /* MetalKit.framework */,
+				2D1998B257AC5D69B2A9F2E8 /* Accelerate.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
+		};
+		3403C7E1D2AAECAF59529B1F /* qobuzmobilev2 */ = {
+			isa = PBXGroup;
+			children = (
+				53187C91D2DEE8A992B8DBC8 /* ExpoModulesProvider.swift */,
+			);
+			name = qobuzmobilev2;
+			sourceTree = "<group>";
+		};
+		5F2E22B761C46282A93B07FC /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				3403C7E1D2AAECAF59529B1F /* qobuzmobilev2 */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		830F449D3D5A90EF4D794636 /* MitsuhaView */ = {
+			isa = PBXGroup;
+			children = (
+				41396F5B3D5C78752E8BCDED /* MSHFView.h */,
+				14E4C57B56982411D1FA304F /* MSHFSiriView.h */,
+				86CC6C108BE494B1ED52A258 /* MSHFAudioSource.m */,
+				88CAC670A44EC8B04C932BF7 /* MSHFAudioProcessing.m */,
+				9A0737CBE37470539B321298 /* MSHFConfig.h */,
+				E67CAFD513409C8E18C5A3A8 /* MSHFDotView.m */,
+				48428362B658DB93E01D2B62 /* MSHFAudioProcessingDelegate.h */,
+				5DB5EB5353DED58BA49D22C1 /* MSHFBarView.h */,
+				AD5D676DE3D4A582ADAE6350 /* MSHFLineView.swift */,
+				81744BD2F27058DFAEC0DAB2 /* RNMitsuhaView.m */,
+				02C9D37AA43DECB17BDA0E91 /* MSHFSiriView.swift */,
+				3CF59EFDA770B3EE39C785BF /* MSHFJelloView.swift */,
+				0FF516C8923F9826E6CDCEB0 /* MSHFAudioProcessing.h */,
+				8FE9D08B5DAF1C11021AB696 /* MSHFAudioSource.h */,
+				19EE2085DA34257034312531 /* MSHFView.m */,
+				F6C2A061F95C3375E7D21362 /* MSHFLineView.h */,
+				EE448AC01929B38E575F741F /* MSHFJelloView.h */,
+				E808D56AA2633D7C2137DE92 /* MSHFDotView.h */,
+				1BE3D4A657214FC8783A59D2 /* MSHFConfig.swift */,
+				E0D9262458199AD3C8BDBB0F /* RNMitsuhaView.h */,
+				F36D1151DAF24B3FD541D51C /* MSHFAudioDelegate.h */,
+				5C9A5F666593EB7068FB9033 /* MSHFBarView.m */,
+				6075D319FFA6B094ACD2D24B /* MSHFJelloLayer.swift */,
+				D8F3386CECA81114DBB7D5D5 /* QobuzAudioTapProcessor.h */,
+				37DCC5E738F3FC0B9FE5B33D /* QobuzAudioTapProcessor.m */,
+				MTAUDIO003 /* MTAudioTap.h */,
+				MTAUDIO002 /* MTAudioTap.m */,
+				ATBRIDGE003 /* AudioTapBridge.h */,
+				ATBRIDGE002 /* AudioTapBridge.m */,
+				E9872E69C0A993D176189864 /* VImageColorExtractor.h */,
+				AD719D750ABE55049076FFBB /* VImageColorExtractor.m */,
+				FD4A78C6932F3C07E1F85C12 /* RNVImageColorExtractor.h */,
+				DB6B1A371DA44940538EE466 /* RNVImageColorExtractor.m */,
+				0FF996A668D4CB95C1AFF60A /* Metal */,
+			);
+			name = MitsuhaView;
+			path = MitsuhaView;
+			sourceTree = SOURCE_ROOT;
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
@@ -81,14 +218,13 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				92987E4F2EB81E1700A47510 /* RNEqualizer.m */,
-				92987E502EB81E1700A47510 /* RNEqualizer.swift */,
 				13B07FAE1A68108700A75B9A /* qobuzmobilev2 */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				F55F257D08C2FE923681C045 /* Pods */,
-				8CE1EB8A9187C9F99CB91B79 /* ExpoModulesProviders */,
+				AD783BCD571DA50A99EE63FA /* Pods */,
+				5F2E22B761C46282A93B07FC /* ExpoModulesProviders */,
+				830F449D3D5A90EF4D794636 /* MitsuhaView */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -103,20 +239,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		8CE1EB8A9187C9F99CB91B79 /* ExpoModulesProviders */ = {
+		AD783BCD571DA50A99EE63FA /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				B0371A6B964A3882A2881A69 /* qobuzmobilev2 */,
+				8B66C02501FAD591CB71DD77 /* Pods-qobuzmobilev2.debug.xcconfig */,
+				CAF04F07A7F5A1C9F289862F /* Pods-qobuzmobilev2.release.xcconfig */,
 			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		B0371A6B964A3882A2881A69 /* qobuzmobilev2 */ = {
-			isa = PBXGroup;
-			children = (
-				0A52B133A5FC1F0B3E79BE31 /* ExpoModulesProvider.swift */,
-			);
-			name = qobuzmobilev2;
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -128,15 +258,6 @@
 			path = qobuzmobilev2/Supporting;
 			sourceTree = "<group>";
 		};
-		F55F257D08C2FE923681C045 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				F369365A48D227A8E6A97EE1 /* Pods-qobuzmobilev2.debug.xcconfig */,
-				1240792DD1FF522595F997C8 /* Pods-qobuzmobilev2.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -145,13 +266,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "qobuzmobilev2" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				040BD819EB50F7D7BA9A89AD /* [Expo] Configure project */,
+				B501A9C9239D9C8B0473EF6F /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				169A2C712294379962877B93 /* [CP] Embed Pods Frameworks */,
+				1CBE9B6F9C213BD06C18537F /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -201,7 +322,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				5CFB37AB91A10618700C48FB /* PrivacyInfo.xcprivacy in Resources */,
+				897F6CFFD3DA916E5DE8472E /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -225,30 +346,6 @@
 			shellPath = /bin/sh;
 			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n`\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
-		040BD819EB50F7D7BA9A89AD /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/.xcode.env",
-				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/qobuzmobilev2/qobuzmobilev2.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-qobuzmobilev2/expo-configure-project.sh",
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-qobuzmobilev2/ExpoModulesProvider.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-qobuzmobilev2/expo-configure-project.sh\"\n";
-		};
 		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -271,7 +368,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		169A2C712294379962877B93 /* [CP] Embed Pods Frameworks */ = {
+		1CBE9B6F9C213BD06C18537F /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -305,6 +402,7 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoMediaLibrary/ExpoMediaLibrary_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
@@ -317,6 +415,7 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoMediaLibrary_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
@@ -327,6 +426,30 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-qobuzmobilev2/Pods-qobuzmobilev2-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		B501A9C9239D9C8B0473EF6F /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/qobuzmobilev2/qobuzmobilev2.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-qobuzmobilev2/expo-configure-project.sh",
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Pods/Target Support Files/Pods-qobuzmobilev2/ExpoModulesProvider.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-qobuzmobilev2/expo-configure-project.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -335,9 +458,27 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				92987E512EB81E1700A47510 /* RNEqualizer.m in Sources */,
-				92987E522EB81E1700A47510 /* RNEqualizer.swift in Sources */,
-				196F93503A8C8FD6024F1017 /* ExpoModulesProvider.swift in Sources */,
+				2582457A76F841CFDB841B06 /* ExpoModulesProvider.swift in Sources */,
+				78C77CC916F120F138815BA4 /* MSHFAudioSource.m in Sources */,
+				AE00F4E273159F2AB6016B57 /* MSHFAudioProcessing.m in Sources */,
+				5AC5096A07CAFD601C2C5E37 /* MSHFDotView.m in Sources */,
+				6627B9114C829198D131D409 /* MSHFLineView.swift in Sources */,
+				70156D3956E05119CDA9E591 /* RNMitsuhaView.m in Sources */,
+				55BE830A04AB697A9B63C0C9 /* MSHFSiriView.swift in Sources */,
+				D43D9110E51FF19FD55E91C4 /* MSHFJelloView.swift in Sources */,
+				0DB393E9A5E05DA7F4ACCE04 /* MSHFView.m in Sources */,
+				83D5AC6886D73152E943BD0B /* MSHFConfig.swift in Sources */,
+				D5C2E2C50649376A703E2109 /* MSHFBarView.m in Sources */,
+				F34B16A196C381D8EE7AE18C /* MSHFJelloLayer.swift in Sources */,
+				5378E625592B35D2DEEB872B /* QobuzAudioTapProcessor.m in Sources */,
+				MTAUDIO001 /* MTAudioTap.m in Sources */,
+				ATBRIDGE001 /* AudioTapBridge.m in Sources */,
+				7454F19FC759643DB2BE70C4 /* VImageColorExtractor.m in Sources */,
+				2E29A95E70CBA4AC4368CB78 /* RNVImageColorExtractor.m in Sources */,
+				B8D1B9CD8B2CE6520FA6E49D /* MitsuhaShaders.metal in Sources */,
+				8583498A57FD6060ACDBD9CB /* MitsuhaMetalRenderer.swift in Sources */,
+				EF82125209AB36825FC7841B /* MitsuhaMetalView.swift in Sources */,
+				BD787AA6E0D0522D9AB558A3 /* RNMitsuhaMetalView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,7 +487,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F369365A48D227A8E6A97EE1 /* Pods-qobuzmobilev2.debug.xcconfig */;
+			baseConfigurationReference = 8B66C02501FAD591CB71DD77 /* Pods-qobuzmobilev2.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -382,7 +523,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1240792DD1FF522595F997C8 /* Pods-qobuzmobilev2.release.xcconfig */;
+			baseConfigurationReference = CAF04F07A7F5A1C9F289862F /* Pods-qobuzmobilev2.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

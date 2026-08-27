@@ -28,6 +28,9 @@ import type { RootState } from '../../store/store';
 import { addToFavorites, removeFromFavorites } from '../../store/slices/favoritesSlice';
 import { createPlaylist, addTrackToPlaylist } from '../../store/slices/librarySlice';
 import Equalizer from './Equalizer'; // ✨ Importar ecualizador
+import AudioPlayerService from '../../services/AudioPlayerService';
+import { MitsuhaMetalVisualizer } from '../MitsuhaVisualizer'; // 🎵 Visualizador Metal GPU
+import { useImageColors } from '../MitsuhaVisualizer/hooks/useImageColors'; // 🎨 Colores dinámicos
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const QUEUE_PANEL_HEIGHT = SCREEN_HEIGHT * 0.6;
@@ -36,6 +39,9 @@ interface FullPlayerProps {
   track: Track;
   isPlaying: boolean;
   sound: Audio.Sound | null;
+  playerService?: AudioPlayerService | null;
+  position?: number;
+  duration?: number;
   onClose: () => void;
   onPlayPause: () => void;
   onNext?: () => void;
@@ -55,6 +61,9 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   track,
   isPlaying,
   sound,
+  playerService,
+  position: externalPosition,
+  duration: externalDuration,
   onClose,
   onPlayPause,
   onNext,
@@ -73,11 +82,16 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const favoriteTracks = useSelector((state: RootState) => state.favorites?.tracks ?? []);
   const playlists = useSelector((state: RootState) => state.library?.playlists ?? []);
   
+  // 🎨 Extraer colores de la carátula
+  const albumImageUri = track.album?.image?.small || track.album?.image?.large;
+  const { primaryColor, secondaryColor } = useImageColors(albumImageUri);
+  
   // Verificar si el track actual está en favoritos
   const isFavorite = favoriteTracks.some(fav => fav.id === track.id);
   
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
+  // Usar position/duration del contexto si vienen de playerService, si no mantener estado local
+  const [position, setPosition] = useState(externalPosition || 0);
+  const [duration, setDuration] = useState(externalDuration || 0);
   const [isBuffering, setIsBuffering] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -204,8 +218,30 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     })
   ).current;
 
+  // Sincronizar position/duration del contexto (playerService) con estado local
+  useEffect(() => {
+    if (externalPosition !== undefined && !isSeeking) {
+      setPosition(externalPosition);
+      
+      // Actualizar barra de progreso
+      const progress = externalDuration && externalDuration > 0
+        ? externalPosition / externalDuration
+        : 0;
+      progressAnim.setValue(progress);
+    }
+  }, [externalPosition, externalDuration, isSeeking]);
+
+  useEffect(() => {
+    if (externalDuration !== undefined) {
+      setDuration(externalDuration);
+    }
+  }, [externalDuration]);
+
   // Actualizar posición y duración del audio usando el callback nativo de expo-av
   useEffect(() => {
+    // Solo usar callbacks de expo-av si NO hay playerService (es decir, es streaming)
+    if (playerService) return; // Si usa playerService, el contexto ya maneja las actualizaciones
+    
     if (!sound || typeof sound.setOnPlaybackStatusUpdate !== 'function') return;
 
     // Usar el callback nativo en lugar de polling con setInterval
@@ -336,10 +372,19 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
   // Manejar seek en la barra de progreso
   const handleSeek = async (progressValue: number) => {
-    if (sound && duration > 0) {
+    if (duration > 0) {
       try {
         const seekPosition = progressValue * duration;
-        await sound.setPositionAsync(seekPosition);
+        
+        // Usar playerService si está disponible (reproductor nativo)
+        if (playerService) {
+          await playerService.setPositionAsync(seekPosition);
+        }
+        // Si no, usar expo-av (streaming)
+        else if (sound) {
+          await sound.setPositionAsync(seekPosition);
+        }
+        
         setPosition(seekPosition);
       } catch (error) {
         console.error('[FullPlayer] Error seeking:', error);
@@ -349,10 +394,19 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
   // Adelantar 10 segundos
   const handleForward = async () => {
-    if (sound && duration > 0) {
+    if (duration > 0) {
       try {
         const newPosition = Math.min(position + 10000, duration);
-        await sound.setPositionAsync(newPosition);
+        
+        // Usar playerService si está disponible (reproductor nativo)
+        if (playerService) {
+          await playerService.setPositionAsync(newPosition);
+        }
+        // Si no, usar expo-av (streaming)
+        else if (sound) {
+          await sound.setPositionAsync(newPosition);
+        }
+        
         setPosition(newPosition);
       } catch (error) {
         console.error('[FullPlayer] Error forwarding:', error);
@@ -362,14 +416,21 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
   // Atrasar 10 segundos
   const handleRewind = async () => {
-    if (sound) {
-      try {
-        const newPosition = Math.max(position - 10000, 0);
-        await sound.setPositionAsync(newPosition);
-        setPosition(newPosition);
-      } catch (error) {
-        console.error('[FullPlayer] Error rewinding:', error);
+    try {
+      const newPosition = Math.max(position - 10000, 0);
+      
+      // Usar playerService si está disponible (reproductor nativo)
+      if (playerService) {
+        await playerService.setPositionAsync(newPosition);
       }
+      // Si no, usar expo-av (streaming)
+      else if (sound) {
+        await sound.setPositionAsync(newPosition);
+      }
+      
+      setPosition(newPosition);
+    } catch (error) {
+      console.error('[FullPlayer] Error rewinding:', error);
     }
   };
 
@@ -553,9 +614,33 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     >
       <BlurView intensity={100} tint="dark" style={styles.blurContainer}>
         <LinearGradient
-          colors={['rgba(0,0,0,0.95)', 'rgba(29,185,84,0.1)', 'rgba(0,0,0,0.98)']}
+          key={`gradient-${primaryColor}`}
+          colors={[
+            primaryColor, // Color puro arriba
+            primaryColor + '80', // 50% opacidad
+            '#121212', // Negro abajo
+          ]}
+          locations={[0, 0.4, 1]}
           style={styles.gradient}
         >
+          {/* 🎵 Visualizador Metal GPU - Animaciones fluidas a 60fps */}
+          <View style={styles.mitsuhaContainer}>
+            <MitsuhaMetalVisualizer
+              isPlaying={isPlaying}
+              albumArtUri={albumImageUri}
+              width={SCREEN_WIDTH}
+              height={150}
+              config={{
+                numberOfPoints: 8,
+                colorMode: 'dynamic',
+                gain: 50,
+                sensitivity: 1.3,
+                waveOffset: 0,
+                useMetal: true,
+              }}
+            />
+          </View>
+
           {/* Header con botón de cerrar - área deslizable */}
           <View style={styles.header} {...panResponder.panHandlers}>
             <View style={styles.dragIndicator} />
@@ -572,6 +657,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
           {/* Album Art con efecto glow - también deslizable */}
           <View style={styles.albumArtContainer} {...panResponder.panHandlers}>
+            
             <Animated.View
               style={[
                 styles.glowEffect,
@@ -612,11 +698,12 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           {/* Progress Bar */}
           <View style={styles.progressContainer}>
             <Slider
+              key={`slider-${primaryColor}`}
               style={styles.slider}
               value={isSeeking ? position : position}
               minimumValue={0}
               maximumValue={duration || 1}
-              minimumTrackTintColor="#1DB954"
+              minimumTrackTintColor={primaryColor}
               maximumTrackTintColor="rgba(255,255,255,0.15)"
               thumbTintColor="#fff"
               step={1000} // Actualizar cada segundo para reducir re-renders
@@ -667,7 +754,8 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             <TouchableOpacity style={styles.playButton} onPress={onPlayPause} activeOpacity={0.8}>
               <BlurView intensity={50} tint="light" style={styles.playButtonBlur}>
                 <LinearGradient
-                  colors={['#1DB954', '#14853E']}
+                  key={`play-btn-${primaryColor}`}
+                  colors={[primaryColor, secondaryColor]}
                   style={styles.playButtonGradient}
                 >
                   {isBuffering ? (
@@ -1087,22 +1175,33 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     position: 'relative',
   },
+  mitsuhaContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: SCREEN_WIDTH,
+    height: 150, // Altura más compacta
+    zIndex: 0,
+    backgroundColor: 'transparent',
+    overflow: 'visible',
+  },
   glowEffect: {
     position: 'absolute',
     width: 300,
     height: 300,
-    borderRadius: 20,
-    backgroundColor: '#1DB954',
-    shadowColor: '#1DB954',
+    borderRadius: 8,
+    backgroundColor: 'transparent', // Sin glow por defecto
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 40,
-    elevation: 20,
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   albumArt: {
     width: 300,
     height: 300,
-    borderRadius: 20,
+    borderRadius: 8, // Bordes más sutiles como Spotify
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
