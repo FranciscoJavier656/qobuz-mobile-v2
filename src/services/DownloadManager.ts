@@ -93,11 +93,15 @@ export class DownloadManager {
         });
       };
 
-      // Crear resumable download
+      // Crear resumable download con headers
       const downloadResumable = FileSystem.createDownloadResumable(
         streamUrl,
         fileUri,
-        {},
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        },
         callback
       );
 

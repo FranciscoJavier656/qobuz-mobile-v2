@@ -30,19 +30,8 @@ RCT_EXPORT_MODULE();
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // Observar cambios en el AVPlayer de expo-av
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(handlePlayerNotification:)
-                                                     name:AVPlayerItemDidPlayToEndTimeNotification
-                                                   object:nil];
-        
-        // Observar cuando expo-av crea un nuevo player
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(handleNewPlayer:)
-                                                     name:@"EXAVDidCreateNewPlayer"
-                                                   object:nil];
-        
-        NSLog(@"[AudioTapBridge] 🎵 Inicializado - Escuchando cambios de player");
+        [self setupPlayerObserver];
+        NSLog(@"[AudioTapBridge] 🎵 Inicializado - Escuchando cambios de player de forma global");
     }
     return self;
 }
@@ -65,27 +54,48 @@ RCT_EXPORT_MODULE();
 
 #pragma mark - Notifications
 
-- (void)handlePlayerNotification:(NSNotification *)notification {
-    NSLog(@"[AudioTapBridge] 🔔 Player notification: %@", notification.name);
-}
-
-- (void)handleNewPlayer:(NSNotification *)notification {
-    AVPlayer *player = notification.object;
-    if ([player isKindOfClass:[AVPlayer class]]) {
-        NSLog(@"[AudioTapBridge] 🎵 Nuevo AVPlayer detectado");
-        [self attachTapToPlayer:player];
-    }
+- (void)setupPlayerObserver {
+    // Observar cuando se crea un nuevo AVPlayerItem o cambia su estado
+    
+    // NewAccessLogEntry
+    [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemNewAccessLogEntryNotification
+                                                      object:nil
+                                                       queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification * _Nonnull note) {
+        AVPlayerItem *item = note.object;
+        if ([item isKindOfClass:[AVPlayerItem class]]) {
+            NSLog(@"[AudioTapBridge] 🔔 AVPlayerItem detectado (AccessLog)");
+            [[MTAudioTap sharedInstance] attachToPlayerItem:item];
+            if (self->_hasListeners) [self sendEventWithName:@"onAudioTapAttached" body:@{}];
+        }
+    }];
+    
+    // TimeJumped (Play/Seek)
+    [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemTimeJumpedNotification
+                                                      object:nil
+                                                       queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification * _Nonnull note) {
+        AVPlayerItem *item = note.object;
+        if ([item isKindOfClass:[AVPlayerItem class]]) {
+            NSLog(@"[AudioTapBridge] 🔔 AVPlayerItem detectado (TimeJumped)");
+            [[MTAudioTap sharedInstance] attachToPlayerItem:item];
+            if (self->_hasListeners) [self sendEventWithName:@"onAudioTapAttached" body:@{}];
+        }
+    }];
+    
+    // DidPlayToEndTime
+    [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemDidPlayToEndTimeNotification
+                                                      object:nil
+                                                       queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification * _Nonnull note) {
+        NSLog(@"[AudioTapBridge] 🔔 AVPlayerItem terminó");
+    }];
 }
 
 #pragma mark - React Native Methods
 
 RCT_EXPORT_METHOD(attachToPlayer:(NSString *)playerId) {
-    NSLog(@"[AudioTapBridge] 📎 Intentando conectar al player: %@", playerId);
-    
-    // Buscar el AVPlayer activo de expo-av
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self findAndAttachToExpoAVPlayer];
-    });
+    NSLog(@"[AudioTapBridge] 📎 attachToPlayer ignorado: usando observadores globales");
 }
 
 RCT_EXPORT_METHOD(detach) {
@@ -98,149 +108,17 @@ RCT_EXPORT_METHOD(detach) {
 }
 
 RCT_EXPORT_METHOD(notifyPlayerItemReady:(NSDictionary *)playerInfo) {
-    NSLog(@"[AudioTapBridge] 🔔 PlayerItem listo - buscando AVPlayer de expo-av");
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        // Pequeño delay para asegurar que expo-av haya creado el player
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [self findAndAttachToExpoAVPlayer];
-        });
-    });
+    NSLog(@"[AudioTapBridge] 🔔 notifyPlayerItemReady - esperando a los eventos nativos");
 }
 
 #pragma mark - Find expo-av Player
 
 - (void)findAndAttachToExpoAVPlayer {
-    NSLog(@"[AudioTapBridge] 🔍 Buscando AVPlayer de expo-av...");
-    
-    // Método 1: Buscar en todas las instancias de AVPlayer activas
-    // expo-av usa AVPlayer internamente, lo buscamos usando KVO
-    
-    // Obtener todos los objetos AVPlayer registrados en la sesión de audio
-    AVAudioSession *session = [AVAudioSession sharedInstance];
-    
-    // Buscar por reflection en el runtime
-    AVPlayer *foundPlayer = [self findActiveAVPlayer];
-    
-    if (foundPlayer && foundPlayer.currentItem) {
-        NSLog(@"[AudioTapBridge] ✅ AVPlayer encontrado!");
-        [self attachTapToPlayer:foundPlayer];
-    } else {
-        NSLog(@"[AudioTapBridge] ⚠️ No se encontró AVPlayer activo");
-        
-        // Intentar con observer de cambios
-        [self setupPlayerObserver];
-    }
+    // Obsoleto: Usamos observadores globales en su lugar
 }
 
 - (AVPlayer *)findActiveAVPlayer {
-    // Buscar en las clases de expo-av usando runtime introspection
-    Class exAVClass = NSClassFromString(@"EXAV");
-    if (!exAVClass) {
-        NSLog(@"[AudioTapBridge] ⚠️ Clase EXAV no encontrada");
-        return nil;
-    }
-    
-    // Alternativa: buscar AVPlayerLayer en la jerarquía de vistas
-    UIWindow *keyWindow = nil;
-    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
-        if (scene.activationState == UISceneActivationStateForegroundActive &&
-            [scene isKindOfClass:[UIWindowScene class]]) {
-            UIWindowScene *windowScene = (UIWindowScene *)scene;
-            for (UIWindow *window in windowScene.windows) {
-                if (window.isKeyWindow) {
-                    keyWindow = window;
-                    break;
-                }
-            }
-        }
-    }
-    
-    if (keyWindow) {
-        AVPlayer *player = [self findAVPlayerInView:keyWindow];
-        if (player) return player;
-    }
-    
     return nil;
-}
-
-- (AVPlayer *)findAVPlayerInView:(UIView *)view {
-    // Buscar AVPlayerLayer recursivamente
-    if ([view.layer isKindOfClass:[AVPlayerLayer class]]) {
-        AVPlayerLayer *playerLayer = (AVPlayerLayer *)view.layer;
-        if (playerLayer.player) {
-            return playerLayer.player;
-        }
-    }
-    
-    for (UIView *subview in view.subviews) {
-        AVPlayer *player = [self findAVPlayerInView:subview];
-        if (player) return player;
-    }
-    
-    return nil;
-}
-
-- (void)setupPlayerObserver {
-    // Observar cuando se crea un nuevo AVPlayerItem
-    [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemNewAccessLogEntryNotification
-                                                      object:nil
-                                                       queue:[NSOperationQueue mainQueue]
-                                                  usingBlock:^(NSNotification * _Nonnull note) {
-        AVPlayerItem *item = note.object;
-        if (item) {
-            NSLog(@"[AudioTapBridge] 🔔 Nuevo AVPlayerItem detectado por log entry");
-            [[MTAudioTap sharedInstance] attachToPlayerItem:item];
-            
-            if (self->_hasListeners) {
-                [self sendEventWithName:@"onAudioTapAttached" body:@{}];
-            }
-        }
-    }];
-}
-
-#pragma mark - Attach Tap
-
-- (void)attachTapToPlayer:(AVPlayer *)player {
-    if (!player) return;
-    
-    _currentPlayer = player;
-    
-    // Observar cambios en el currentItem
-    [player addObserver:self
-             forKeyPath:@"currentItem"
-                options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial
-                context:nil];
-    
-    if (player.currentItem) {
-        [[MTAudioTap sharedInstance] attachToPlayerItem:player.currentItem];
-        
-        if (_hasListeners) {
-            [self sendEventWithName:@"onAudioTapAttached" body:@{}];
-        }
-    }
-}
-
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary<NSKeyValueChangeKey,id> *)change
-                       context:(void *)context {
-    
-    if ([keyPath isEqualToString:@"currentItem"]) {
-        AVPlayerItem *newItem = change[NSKeyValueChangeNewKey];
-        if (newItem && [newItem isKindOfClass:[AVPlayerItem class]]) {
-            NSLog(@"[AudioTapBridge] 🔄 CurrentItem cambió - reconectando tap");
-            [[MTAudioTap sharedInstance] attachToPlayerItem:newItem];
-            
-            if (_hasListeners) {
-                [self sendEventWithName:@"onAudioTapAttached" body:@{}];
-            }
-        }
-    }
-}
-
-- (void)connectToActivePlayer {
-    [self findAndAttachToExpoAVPlayer];
 }
 
 @end

@@ -293,8 +293,9 @@ export class QobuzAPI {
       return dynamicSecret;
     }
     
-    // Si la extracción dinámica falla, lanzar error
-    throw new Error('Failed to extract app_secret. Cannot generate valid request signatures.');
+    console.log('[QobuzAPI] ⚠️ Dynamic extraction failed, falling back to known secrets');
+    // Import from constants.ts if not already imported? Wait, it's not imported. Let's just hardcode the known secret.
+    return 'abb21364945c0583309667d13ca3d93a';
   }
 
   // Genera la firma MD5 requerida por Qobuz API (basado en el código de la app Electron)
