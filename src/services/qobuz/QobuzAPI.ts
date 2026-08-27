@@ -34,9 +34,12 @@ export class QobuzAPI {
 
   public async login(email: string, password: string): Promise<any> {
     try {
+      // Qobuz API requires MD5-hashed password and 'username' param
+      const passwordHash = CryptoJS.MD5(password).toString();
+
       const params = new URLSearchParams();
-      params.append('email', email);
-      params.append('password', password);
+      params.append('username', email);
+      params.append('password', passwordHash);
       params.append('app_id', this.APP_ID);
 
       const response = await axios.post(
